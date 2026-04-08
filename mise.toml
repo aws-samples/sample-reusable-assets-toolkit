@@ -8,3 +8,7 @@ run = """
 stack=$(echo "IDP-CODE-NETWORK\nIDP-CODE-STORAGE\nIDP-CODE-APPLICATION" | fzf --prompt="Select stack: ")
 pnpm nx run @idp-code/infra:deploy $stack --output-style=stream
 """
+
+[tasks.checkov]
+description = "Run checkov on CDK synthesized CloudFormation templates"
+run = "pnpm nx run @idp-code/infra:synth && checkov --skip-download -d dist/packages/infra/cdk.out"

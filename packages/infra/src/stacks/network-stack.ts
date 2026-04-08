@@ -1,4 +1,4 @@
-import { Stack, StackProps } from 'aws-cdk-lib';
+import { CfnResource, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import {
   Vpc,
   SubnetType,
@@ -6,6 +6,8 @@ import {
   FlowLogDestination,
   FlowLogTrafficType,
 } from 'aws-cdk-lib/aws-ec2';
+import * as kms from 'aws-cdk-lib/aws-kms';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { SSM_KEYS } from ':idp-code/common-constructs';
 import { Construct } from 'constructs';
@@ -39,9 +41,31 @@ export class NetworkStack extends Stack {
       ],
     });
 
+    const flowLogKey = new kms.Key(this, 'FlowLogKey', {
+      enableKeyRotation: true,
+      removalPolicy: RemovalPolicy.RETAIN,
+    });
+
+    const flowLogGroup = new logs.LogGroup(this, 'FlowLogGroup', {
+      retention: logs.RetentionDays.TWO_YEARS,
+      encryptionKey: flowLogKey,
+      removalPolicy: RemovalPolicy.RETAIN,
+    });
+
     this.vpc.addFlowLog('FlowLog', {
-      destination: FlowLogDestination.toCloudWatchLogs(),
+      destination: FlowLogDestination.toCloudWatchLogs(flowLogGroup),
       trafficType: FlowLogTrafficType.REJECT,
+    });
+
+    // checkov skip: CDK auto-generated custom resource Lambda, not user-controllable
+    const handler = this.node.tryFindChild('Custom::VpcRestrictDefaultSGCustomResourceProvider')
+      ?.node.tryFindChild('Handler') as CfnResource | undefined;
+    handler?.addMetadata('checkov', {
+      skip: [
+        { id: 'CKV_AWS_115', comment: 'CDK auto-generated custom resource Lambda' },
+        { id: 'CKV_AWS_116', comment: 'CDK auto-generated custom resource Lambda' },
+        { id: 'CKV_AWS_117', comment: 'CDK auto-generated custom resource Lambda' },
+      ],
     });
 
     new StringParameter(this, 'VpcIdParam', {
