@@ -42,15 +42,26 @@ export class StorageStack extends Stack {
       stringValue: this.cluster.secret?.secretArn ?? '',
     });
 
+    const proxySg = new ec2.SecurityGroup(this, 'RdsProxySg', {
+      vpc,
+      description: 'Security group for RDS Proxy',
+    });
+
     const proxy = this.cluster.addProxy('RdsProxy', {
       vpc,
       secrets: this.cluster.secret ? [this.cluster.secret] : [],
       requireTLS: true,
+      securityGroups: [proxySg],
     });
 
     new StringParameter(this, 'ProxyEndpointParam', {
       parameterName: SSM_KEYS.RDS_PROXY_ENDPOINT,
       stringValue: proxy.endpoint,
+    });
+
+    new StringParameter(this, 'ProxySgIdParam', {
+      parameterName: SSM_KEYS.RDS_PROXY_SG_ID,
+      stringValue: proxySg.securityGroupId,
     });
   }
 }

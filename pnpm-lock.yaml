@@ -17,6 +17,9 @@ importers:
       aws-cdk-lib:
         specifier: 2.244.0
         version: 2.244.0(constructs@10.6.0)
+      cargo-lambda-cdk:
+        specifier: ^0.0.36
+        version: 0.0.36(aws-cdk-lib@2.244.0(constructs@10.6.0))(constructs@10.6.0)
       constructs:
         specifier: 10.6.0
         version: 10.6.0
@@ -2551,6 +2554,14 @@ packages:
 
   caniuse-lite@1.0.30001786:
     resolution: {integrity: sha512-4oxTZEvqmLLrERwxO76yfKM7acZo310U+v4kqexI2TL1DkkUEMT8UijrxxcnVdxR3qkVf5awGRX+4Z6aPHVKrA==}
+
+  cargo-lambda-cdk@0.0.36:
+    resolution: {integrity: sha512-H25m7WjzHeifdfEEpsSNkQS6WZETMT6agHaUIfA0rmYlQohOX3lC1qE0OXBEsk1bgCHEatfcsEBkyYgxnzZdLA==}
+    peerDependencies:
+      aws-cdk-lib: ^2.231.0
+      constructs: ^10.0.5
+    bundledDependencies:
+      - js-toml
 
   chai-as-promised@7.1.2:
     resolution: {integrity: sha512-aBDHZxRzYnUYuIAIPBH2s511DjlKPzXNlXSGFC8CwmroWQLfrW0LtE1nK3MAwwNhJPa9raEjNCmRoFpG0Hurdw==}
@@ -7942,6 +7953,11 @@ snapshots:
   camelcase@6.3.0: {}
 
   caniuse-lite@1.0.30001786: {}
+
+  cargo-lambda-cdk@0.0.36(aws-cdk-lib@2.244.0(constructs@10.6.0))(constructs@10.6.0):
+    dependencies:
+      aws-cdk-lib: 2.244.0(constructs@10.6.0)
+      constructs: 10.6.0
 
   chai-as-promised@7.1.2(chai@4.5.0):
     dependencies:

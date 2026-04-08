@@ -4,4 +4,6 @@ export const SSM_KEYS = {
   AURORA_CLUSTER_PORT: '/idp-code/aurora/cluster-port',
   AURORA_SECRET_ARN: '/idp-code/aurora/secret-arn',
   RDS_PROXY_ENDPOINT: '/idp-code/aurora/proxy-endpoint',
+  RDS_PROXY_SG_ID: '/idp-code/aurora/proxy-sg-id',
+  INGEST_QUEUE_URL: '/idp-code/ingest/queue-url',
 } as const;

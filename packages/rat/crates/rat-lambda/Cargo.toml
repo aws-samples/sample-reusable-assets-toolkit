@@ -1,0 +1,24 @@
+[package]
+name = "rat-lambda"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "bootstrap"
+path = "src/main.rs"
+
+[dependencies]
+rat-core.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+lambda_runtime = "0.13"
+aws_lambda_events = "0.15"
+sqlx.workspace = true
+pgvector.workspace = true
+envy.workspace = true
+aws-config.workspace = true
+aws-sdk-secretsmanager.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
