@@ -12,3 +12,5 @@ rat-core.workspace = true
 tokio.workspace = true
 anyhow.workspace = true
 clap = { version = "4", features = ["derive"] }
+git2.workspace = true
+dialoguer.workspace = true
