@@ -1,142 +1,118 @@
-# idp-code
+# Reusable Asset Toolkit
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) has been successfully created! ✨.
+MCP Server + Skills 기반의 재사용 가능한 코드 자산(Reusable Assets) 검색 및 적용 툴킷.
+AI 기반 개발 환경(Kiro) 내에서 큐레이션된 코드 자산을 직접 검색하고 프로젝트에 적용할 수 있습니다.
 
-[Learn more about this workspace setup and the @aws/nx-plugin](https://awslabs.github.io/nx-plugin-for-aws). Now, let's get you up to speed!
+## 해결하려는 문제
 
-## Install Nx Console
+- 조직 내에 좋은 코드 패턴, 유틸리티, 템플릿이 존재하지만 발견하기 어렵고 재사용이 드묾
+- 위키에 문서화되어 있어도 코딩 시점에서 참조하기 불편
+- 복사-붙여넣기한 코드가 현재 컨텍스트에 맞지 않아 추가 수정 비용 발생
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+## 솔루션 개요
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+개발자가 Kiro(AI 코딩 어시스턴트) 워크플로우 내에서 Reusable Asset을 검색하고 현재 프로젝트 컨텍스트에 맞게 적용할 수 있는 도구를 제공합니다.
 
-## Available generators
+## 핵심 컴포넌트
 
-The following list of generators are what is currently available in the `@aws/nx-plugin`:
+| 컴포넌트 | 설명 |
+|----------|------|
+| Asset DB | AWS Cloud에 호스팅된 Asset 데이터베이스. 분석된 Asset 메타데이터와 코드 저장 |
+| MCP Server | Asset DB와 인터페이스하는 MCP 서버 (AWS Cloud 배포) |
+| Kiro Skills | Reusable Asset 활용을 위한 Kiro 스킬 세트. 자연어 요청 기반으로 적절한 Asset 검색 및 적용 |
 
-- **connection**: Integrates a source project with a target project
+## 주요 기능
 
-- **license**: Add LICENSE files and configure source code licence headers
+### 1. 컨텍스트 기반 Asset 검색 및 추천
 
-- **py#fast-api**: Generates a FastAPI Python project
+사용자의 문제 도메인, 기술 스택, AWS 서비스가 식별되면 관련 Reusable Asset을 자동으로 검색하여 제시합니다.
 
-- **py#lambda-function**: Adds a lambda function to a python project
+- 대화, 프로젝트 파일, 에디터 컨텍스트에서 키워드 추출
+- 키워드, 태그, 카테고리, 언어, AWS 서비스 등 복합 조건으로 Asset 카탈로그 검색
+- 매칭된 Asset을 요약 형태로 제시하고, 선택 시 상세 정보 제공
+- MCP 도구 예시: `asset_search`, `asset_get`, `asset_list`
 
-- **py#mcp-server**: Generate a Python Model Context Protocol (MCP) server for providing context to Large Language Models
+### 2. 자동화된 Asset 설치 및 배포
 
-- **py#project**: Generates a Python project
+선택한 Asset을 로컬 환경에 설치하거나 AWS Cloud에 배포합니다.
+NanoClaw의 "skills over features" 접근 방식에서 영감을 받아, 설치 프로세스를 빌트인 기능이 아닌 Skill로 관리합니다.
 
-- **py#strands-agent**: Add a Strands Agent to a Python project
+- 각 Asset은 메타데이터에 설치/배포 워크플로우 단계를 포함
+- MCP 서버가 워크플로우 정의를 데이터로 제공
+- Skill이 워크플로우를 로드하고, AI가 CLI 명령을 단계별로 실행
+- 단계 유형: 환경 확인, 파일 복사, CLI 실행, 사용자 안내
+- 실패 시 각 단계별 에러 메시지 및 해결 가이드 제공
 
-- **terraform#project**: Generates a Terraform project
+### 3. LLM 코드 생성을 위한 Pattern DB
 
-- **ts#infra**: Generates a cdk application
+PACE에서 관리하는 큐레이션된 코드 스니펫을 LLM 코드 생성의 참조 예시로 제공합니다.
 
-- **ts#lambda-function**: Generate a TypeScript lambda function
+- 특정 패턴의 코드 작성 시, 매칭되는 Asset을 검색하여 LLM 컨텍스트에 주입
+- LLM이 검증된 예시를 기반으로 코드를 생성하여 일관된 패턴 보장
+- 조직의 코딩 표준과 모범 사례를 반영한 코드 생성 유도
+- 단순 코드 복사가 아닌, 현재 프로젝트 컨텍스트에 패턴을 적용하여 새로운 코드 생성
 
-- **ts#mcp-server**: Generate a TypeScript Model Context Protocol (MCP) server for providing context to Large Language Models
+## Asset 수집
 
-- **ts#nx-generator**: Generator for adding an Nx Generator to an existing TypeScript project
+### Asset 소스 (PACE Reusable Asset만 해당)
 
-- **ts#nx-plugin**: Generate an Nx Plugin of your own! Build custom generators automatically made available for AI vibe-coding via MCP
+- 내부 GitLab 리포지토리
+- GitHub aws-samples 등 공개 리포지토리
 
-- **ts#project**: Generates a TypeScript project
+### 수집 흐름
 
-- **ts#react-website**: Generates a React static website
-
-- **ts#react-website#auth**: Adds auth to an existing React website
-
-- **ts#smithy-api**: Create an API using Smithy and the Smithy TypeScript Server SDK
-
-- **ts#strands-agent**: Add a Strands Agent to a TypeScript project
-
-- **ts#trpc-api**: creates a trpc backend
-
-You also have the option of using additional [commmunity plugins](https://nx.dev/plugin-registry) as needed.
-
-## Invoking a generator
-
-```sh
-pnpm nx g @aws/nx-plugin:<generator-name>
+```
+대상 리포 → Ingestion CLI (tree-sitter 파싱 + 청킹) → API Gateway → SQS
+→ Consumer Lambda (LLM 설명 생성 + 임베딩) → Aurora PostgreSQL (pgvector)
 ```
 
-Alternatively you can use the Nx IDE plugin to invoke your generators.
+Ingestion CLI가 레포의 소스코드, 문서, 설정 파일을 분석하여 코드 스니펫을 추출하고,
+서버 사이드에서 LLM 설명 생성 및 벡터 임베딩을 거쳐 DB에 저장합니다.
 
-Refer to the [full documentation](https://awslabs.github.io/nx-plugin-for-aws) for additional guidance for each generator.
+상세 설계는 [Ingestion CLI](./ingestion-cli.md) 문서를 참조하세요.
 
-## Common tasks
+## 접근 제어
 
-### Build a single project
+MCP 서버에서 Midway 인증을 통한 접근 제어
+
+## 기술 스택
+
+(TBD)
+
+## 향후 계획
+
+(TBD)
+
+## 기대 효과
+
+- 검증된 코드 패턴의 재사용 증가
+- 코딩 시점에서 직접 접근하여 컨텍스트 전환 비용 제거
+- AI 어시스턴트가 조직의 코드 자산을 인식하고 활용할 수 있도록 지원
+
+---
+
+## 개발 환경
+
+이 프로젝트는 [Nx](https://nx.dev) 워크스페이스와 [@aws/nx-plugin](https://awslabs.github.io/nx-plugin-for-aws)을 사용합니다.
+
+### 빌드
 
 ```sh
+# 단일 프로젝트 빌드
 pnpm nx build <project-name>
-```
 
-### Build all projects
-
-```sh
+# 전체 빌드
 pnpm nx run-many --target build --all
-# or
-pnpm build
 ```
 
-### Run arbitrary task
-
-```sh
-pnpm nx <target> <project-name>
-```
-
-### Lint (and fix) all projects
+### 린트
 
 ```sh
 pnpm nx run-many --target lint --configuration=fix --all
-# or
-pnpm lint
 ```
 
-## Test all projects (and update snapshots)
+### 테스트
 
 ```sh
-pnpm nx run-many --target test --all --update
+pnpm nx run-many --target test --all
 ```
-
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
-
-[More about running tasks in the Nx docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Keep TypeScript project references up to date
-
-Nx automatically updates TypeScript [project references](https://www.typescriptlang.org/docs/handbook/project-references.html) in `tsconfig.json` files to ensure they remain accurate based on your project dependencies (`import` statements). This sync is automatically done when running tasks such as `build`, which require updated references to function correctly.
-
-To manually trigger the process to sync the project graph dependencies information to the TypeScript project references, run the following command:
-
-```sh
-pnpm nx sync
-```
-
-You can enforce that the TypeScript project references are always in the correct state when running in CI by adding a step to your CI job configuration that runs the following command:
-
-```sh
-pnpm nx sync:check
-```
-
-[Learn more about nx sync](https://nx.dev/reference/nx-commands#sync)
-
-## Set up CI!
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-pnpm nx g ci-workflow
-```
-
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [@aws/nx-plugin quick-start](https://awslabs.github.io/nx-plugin-for-aws/en/get_started/quick-start/)
-- [@aws/nx-plugin AI dungeon game](https://awslabs.github.io/nx-plugin-for-aws/en/get_started/tutorials/dungeon-game/overview/)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
