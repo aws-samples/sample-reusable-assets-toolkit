@@ -3,6 +3,10 @@ name = "rat-cli"
 version.workspace = true
 edition.workspace = true
 
+[lib]
+name = "rat_cli"
+path = "src/lib.rs"
+
 [[bin]]
 name = "rat"
 path = "src/main.rs"
@@ -14,3 +18,10 @@ anyhow.workspace = true
 clap = { version = "4", features = ["derive"] }
 git2.workspace = true
 dialoguer.workspace = true
+tree-sitter.workspace = true
+tree-sitter-rust.workspace = true
+tree-sitter-javascript.workspace = true
+tree-sitter-typescript.workspace = true
+tree-sitter-python.workspace = true
+tree-sitter-go.workspace = true
+tree-sitter-java.workspace = true
