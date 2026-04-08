@@ -16,6 +16,13 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "es2022",
-    "customConditions": ["@idp-code/source"]
+    "customConditions": ["@idp-code/source"],
+    "rootDir": ".",
+    "paths": {
+      ":idp-code/infra": ["./packages/infra/src/index.ts"],
+      ":idp-code/common-constructs": [
+        "./packages/common/constructs/src/index.ts"
+      ]
+    }
   }
 }
