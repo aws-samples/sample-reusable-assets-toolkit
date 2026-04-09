@@ -1,6 +1,6 @@
 use tree_sitter::Node;
 
-use super::Language;
+use super::code::Language;
 use super::javascript::js_import_symbols;
 
 pub struct TypeScript;

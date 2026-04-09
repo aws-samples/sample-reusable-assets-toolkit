@@ -137,3 +137,27 @@ fn chunk_javascript() {
     // class Router
     assert!(chunks.iter().any(|c| c.content.contains("class Router")));
 }
+
+#[test]
+fn chunk_markdown() {
+    let chunks = chunk_file(&fixture("sample.md")).unwrap();
+    print_chunks(&chunks);
+
+    // ## 단위로 분할됨
+    assert!(chunks.iter().any(|c| c.symbol_name.as_deref() == Some("My Project")));
+    assert!(chunks.iter().any(|c| c.symbol_name.as_deref() == Some("Installation")));
+    assert!(chunks.iter().any(|c| c.symbol_name.as_deref() == Some("Usage")));
+    assert!(chunks.iter().any(|c| c.symbol_name.as_deref() == Some("API Reference")));
+
+    // ### 하위 헤딩은 ## 청크에 포함됨
+    let usage = chunks.iter().find(|c| c.symbol_name.as_deref() == Some("Usage")).unwrap();
+    assert!(usage.content.contains("### Basic Usage"));
+    assert!(usage.content.contains("### Advanced Usage"));
+
+    // imports는 항상 비어있음
+    assert!(chunks.iter().all(|c| c.imports.is_empty()));
+
+    // 내용이 해당 섹션에 포함됨
+    let install = chunks.iter().find(|c| c.symbol_name.as_deref() == Some("Installation")).unwrap();
+    assert!(install.content.contains("npm install my-project"));
+}

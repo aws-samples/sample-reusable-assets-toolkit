@@ -1,6 +1,6 @@
 use tree_sitter::Node;
 
-use super::Language;
+use super::code::Language;
 
 pub struct Rust;
 
