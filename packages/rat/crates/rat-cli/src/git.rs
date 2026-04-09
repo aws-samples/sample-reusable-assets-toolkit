@@ -69,6 +69,62 @@ pub fn branch_commit_id(repo_root: &Path, branch: &str) -> anyhow::Result<String
     Ok(commit.id().to_string())
 }
 
+/// Diff result between two commits: changed (added/modified/renamed) and deleted files.
+pub struct DiffResult {
+    pub changed: Vec<PathBuf>,
+    pub deleted: Vec<PathBuf>,
+}
+
+/// Returns file changes between two commits.
+pub fn diff_between_commits(
+    repo_root: &Path,
+    from_commit: &str,
+    to_commit: &str,
+) -> anyhow::Result<DiffResult> {
+    let repo = Repository::open(repo_root)
+        .with_context(|| format!("failed to open git repository at {}", repo_root.display()))?;
+
+    let from_oid = git2::Oid::from_str(from_commit)
+        .with_context(|| format!("invalid commit id: {from_commit}"))?;
+    let to_oid = git2::Oid::from_str(to_commit)
+        .with_context(|| format!("invalid commit id: {to_commit}"))?;
+
+    let from_tree = repo.find_commit(from_oid)?.tree()?;
+    let to_tree = repo.find_commit(to_oid)?.tree()?;
+
+    let diff = repo.diff_tree_to_tree(Some(&from_tree), Some(&to_tree), None)?;
+
+    let mut changed = Vec::new();
+    let mut deleted = Vec::new();
+
+    diff.foreach(
+        &mut |delta, _| {
+            match delta.status() {
+                git2::Delta::Added
+                | git2::Delta::Modified
+                | git2::Delta::Renamed
+                | git2::Delta::Copied => {
+                    if let Some(path) = delta.new_file().path() {
+                        changed.push(path.to_path_buf());
+                    }
+                }
+                git2::Delta::Deleted => {
+                    if let Some(path) = delta.old_file().path() {
+                        deleted.push(path.to_path_buf());
+                    }
+                }
+                _ => {}
+            }
+            true
+        },
+        None,
+        None,
+        None,
+    )?;
+
+    Ok(DiffResult { changed, deleted })
+}
+
 /// Returns the remote "origin" URL, if configured.
 pub fn remote_url(repo_root: &Path) -> anyhow::Result<Option<String>> {
     let repo = Repository::open(repo_root)

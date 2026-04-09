@@ -18,19 +18,67 @@
 
 ```
 FileMessage (SQS 메시지 1건 = 파일 1개)
-├── repo_id: String          // git remote URL
-├── source_path: String      // 레포 내 상대 경로
-├── content: String          // 파일 전체 원본
-└── chunks: Vec<ChunkEntry>  // 청크 목록
-    ├── source_type: code | doc
+├── action: "upsert" | "delete" | "purge"
+├── repo_id: String                  // git remote URL
+├── commit_id: String                // 처리 기준 커밋 SHA
+├── source_path: String?             // 레포 내 상대 경로 (purge 시 생략)
+├── content: String?                 // 파일 전체 원본 (upsert에만)
+└── chunks: Vec<ChunkEntry>          // 청크 목록 (upsert에만)
+    ├── source_type: "code" | "doc"
     ├── start_line / end_line
-    └── content: String      // imports + 청크 코드
+    └── content: String              // imports + 청크 코드
 ```
 
-Consumer Lambda 처리:
-1. `files` 테이블에 파일 원본 저장
-2. 청크 목록을 파일 컨텍스트와 함께 LLM에 전달 → 설명 생성
-3. `snippets` 테이블에 청크별 저장 + 임베딩
+### 액션별 샘플
+
+**`upsert`** — 파일 생성/변경 시
+
+```json
+{
+  "action": "upsert",
+  "repo_id": "git@gitlab.example.com:team/my-service.git",
+  "commit_id": "a1b2c3d4e5f6...",
+  "source_path": "src/handlers/user.ts",
+  "content": "import { Request, Response } from 'express';\n\nexport class UserService { ... }",
+  "chunks": [
+    {
+      "source_type": "code",
+      "start_line": 3,
+      "end_line": 20,
+      "content": "import { Request, Response } from 'express';\n\nexport class UserService { ... }"
+    }
+  ]
+}
+```
+
+**`delete`** — 파일 삭제 시 (`--since`로 증분 ingest할 때)
+
+```json
+{
+  "action": "delete",
+  "repo_id": "git@gitlab.example.com:team/my-service.git",
+  "commit_id": "a1b2c3d4e5f6...",
+  "source_path": "src/handlers/legacy.ts"
+}
+```
+
+**`purge`** — 레포 전체 재인덱싱 시 (`--force`)
+
+```json
+{
+  "action": "purge",
+  "repo_id": "git@gitlab.example.com:team/my-service.git",
+  "commit_id": "a1b2c3d4e5f6..."
+}
+```
+
+### Consumer Lambda 처리
+
+| action | 처리 |
+|--------|------|
+| `upsert` | `files` 테이블에 원본 저장 → 청크를 LLM에 전달해 설명 생성 → `snippets` 테이블에 임베딩과 함께 저장 |
+| `delete` | `repo_id` + `source_path`로 `files`/`snippets` 레코드 삭제 |
+| `purge` | `repo_id`에 해당하는 모든 `files`/`snippets` 레코드 삭제 (force 재인덱싱 직전) |
 
 ## Crates
 
