@@ -2,7 +2,7 @@ use aws_lambda_events::sqs::SqsEvent;
 use aws_sdk_bedrockruntime::Client as BedrockClient;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use pgvector::Vector;
-use rat_core::{db, embedding};
+use rat_core::{db, embedding, summary};
 use rat_lambda::{build_file_record, build_snippet_records, Action, FileMessage};
 use serde::Deserialize;
 use sqlx::PgPool;
@@ -12,11 +12,13 @@ use tracing::{error, info, warn};
 struct Config {
     rds_proxy_endpoint: String,
     db_secret_arn: String,
+    summary_model_id: String,
 }
 
 struct AppState {
     pool: PgPool,
     bedrock: BedrockClient,
+    summary_model_id: String,
 }
 
 async fn init() -> Result<AppState, Error> {
@@ -31,7 +33,11 @@ async fn init() -> Result<AppState, Error> {
     let aws_config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
     let bedrock = BedrockClient::new(&aws_config);
 
-    Ok(AppState { pool, bedrock })
+    Ok(AppState {
+        pool,
+        bedrock,
+        summary_model_id: config.summary_model_id,
+    })
 }
 
 async fn handler(state: &AppState, event: LambdaEvent<SqsEvent>) -> Result<(), Error> {
@@ -54,10 +60,14 @@ async fn handler(state: &AppState, event: LambdaEvent<SqsEvent>) -> Result<(), E
 
         info!(action = ?msg.action, repo_id = %msg.repo_id, source_path = ?msg.source_path, "Processing message");
 
-        match msg.action {
-            Action::Upsert => handle_upsert(state, &msg).await?,
-            Action::Delete => handle_delete(state, &msg).await?,
-            Action::Purge => handle_purge(state, &msg).await?,
+        let result = match msg.action {
+            Action::Upsert => handle_upsert(state, &msg).await,
+            Action::Delete => handle_delete(state, &msg).await,
+            Action::Purge => handle_purge(state, &msg).await,
+        };
+
+        if let Err(e) = result {
+            error!(error = %e, action = ?msg.action, repo_id = %msg.repo_id, source_path = ?msg.source_path, "Failed to process message");
         }
     }
 
@@ -68,6 +78,8 @@ async fn handler(state: &AppState, event: LambdaEvent<SqsEvent>) -> Result<(), E
 async fn handle_upsert(state: &AppState, msg: &FileMessage) -> Result<(), Error> {
     let file_rec = build_file_record(msg)?;
     let snippet_recs = build_snippet_records(msg);
+
+    let mut tx = state.pool.begin().await?;
 
     let file_id: i64 = sqlx::query_scalar(
         "INSERT INTO files (repo_id, source_path, commit_id, content, language)
@@ -81,18 +93,23 @@ async fn handle_upsert(state: &AppState, msg: &FileMessage) -> Result<(), Error>
     .bind(file_rec.commit_id)
     .bind(file_rec.content)
     .bind(file_rec.language)
-    .fetch_one(&state.pool)
+    .fetch_one(&mut *tx)
     .await?;
 
     sqlx::query("DELETE FROM snippets WHERE file_id = $1")
         .bind(file_id)
-        .execute(&state.pool)
+        .execute(&mut *tx)
         .await?;
 
     info!(file_id, chunks = snippet_recs.len(), "Inserting snippets");
 
     for rec in &snippet_recs {
-        let emb = embedding::generate_embedding(&state.bedrock, rec.description)
+        let description =
+            summary::generate_summary(&state.bedrock, &state.summary_model_id, rec.content)
+                .await
+                .map_err(|e| format!("summary error: {e}"))?;
+
+        let emb = embedding::generate_embedding(&state.bedrock, &description)
             .await
             .map_err(|e| format!("embedding error: {e}"))?;
 
@@ -103,14 +120,16 @@ async fn handle_upsert(state: &AppState, msg: &FileMessage) -> Result<(), Error>
         .bind(file_id)
         .bind(rec.repo_id)
         .bind(rec.content)
-        .bind(rec.description)
+        .bind(&description)
         .bind(Vector::from(emb))
         .bind(rec.source_type)
         .bind(rec.start_line)
         .bind(rec.end_line)
-        .fetch_optional(&state.pool)
+        .execute(&mut *tx)
         .await?;
     }
+
+    tx.commit().await?;
 
     info!(file_id, "Upsert complete");
     Ok(())

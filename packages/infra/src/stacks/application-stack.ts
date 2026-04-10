@@ -118,6 +118,7 @@ export class ApplicationStack extends Stack {
       environment: {
         RDS_PROXY_ENDPOINT: proxyEndpoint,
         DB_SECRET_ARN: secretArn,
+        SUMMARY_MODEL_ID: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
       },
     });
 
@@ -142,12 +143,20 @@ export class ApplicationStack extends Stack {
 
     consumer.addEventSource(
       new eventsources.SqsEventSource(queue, {
-        batchSize: 10,
+        batchSize: 1,
         maxBatchingWindow: Duration.seconds(30),
+        maxConcurrency: 2,
       }),
     );
 
     dbSecret.grantRead(consumer);
+
+    consumer.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['bedrock:InvokeModel'],
+        resources: ['*'],
+      }),
+    );
 
     new StringParameter(this, 'IngestQueueUrlParam', {
       parameterName: SSM_KEYS.INGEST_QUEUE_URL,
@@ -184,8 +193,7 @@ export class ApplicationStack extends Stack {
         },
         {
           id: 'CKV_AWS_173',
-          comment:
-            'Environment variables contain only endpoints and ARNs',
+          comment: 'Environment variables contain only endpoints and ARNs',
         },
       ],
     });

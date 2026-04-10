@@ -1,3 +1,4 @@
+use rat_core::summary;
 use rat_lambda::{build_file_record, build_snippet_records, FileMessage};
 
 fn sample_upsert_json() -> &'static str {
@@ -22,6 +23,30 @@ fn sample_upsert_json() -> &'static str {
             }
         ]
     }"#
+}
+
+fn sample_markdown_json() -> &'static str {
+    r###"{
+        "action": "upsert",
+        "repo_id": "https://github.com/example/repo",
+        "commit_id": "abc123def",
+        "source_path": "docs/getting-started.md",
+        "content": "# 시작하기\n\n이 가이드는 프로젝트 설정 과정을 안내합니다.\n\n## 사전 요구사항\n\n- Rust 1.75 이상\n- PostgreSQL 15 이상\n- AWS CLI 설정 완료\n\n## 설치\n\n```bash\ncargo install rat-cli\nrat configure\nrat login\n```\n\n## 사용법\n\n설치 후 저장소를 인덱싱합니다:\n\n```bash\nrat ingest --repo https://github.com/example/repo\nrat search \"인증은 어떻게 동작하나요?\"\n```\n",
+        "chunks": [
+            {
+                "source_type": "doc",
+                "start_line": 1,
+                "end_line": 10,
+                "content": "# 시작하기\n\n이 가이드는 프로젝트 설정 과정을 안내합니다.\n\n## 사전 요구사항\n\n- Rust 1.75 이상\n- PostgreSQL 15 이상\n- AWS CLI 설정 완료"
+            },
+            {
+                "source_type": "doc",
+                "start_line": 12,
+                "end_line": 25,
+                "content": "## 설치\n\n```bash\ncargo install rat-cli\nrat configure\nrat login\n```\n\n## 사용법\n\n설치 후 저장소를 인덱싱합니다:\n\n```bash\nrat ingest --repo https://github.com/example/repo\nrat search \"인증은 어떻게 동작하나요?\"\n```"
+            }
+        ]
+    }"###
 }
 
 fn sample_delete_json() -> &'static str {
@@ -61,8 +86,68 @@ fn test_upsert_records() {
         println!("  source_type: {}", rec.source_type);
         println!("  start_line:  {}", rec.start_line);
         println!("  end_line:    {}", rec.end_line);
-        println!("  description: {}", rec.description);
         println!("  content:\n{}", rec.content);
+    }
+}
+
+#[tokio::test]
+async fn test_summary_generation() {
+    let model_id = "global.anthropic.claude-haiku-4-5-20251001-v1:0";
+    let aws_config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
+    let bedrock = aws_sdk_bedrockruntime::Client::new(&aws_config);
+
+    let msg: FileMessage = serde_json::from_str(sample_upsert_json()).unwrap();
+    let snippet_recs = build_snippet_records(&msg);
+
+    for (i, rec) in snippet_recs.iter().enumerate() {
+        let description = summary::generate_summary(&bedrock, model_id, rec.content)
+            .await
+            .unwrap();
+        println!("--- snippet[{i}] summary ---");
+        println!("  content:     {}", rec.content);
+        println!("  description: {description}");
+    }
+}
+
+#[test]
+fn test_markdown_upsert_records() {
+    let msg: FileMessage = serde_json::from_str(sample_markdown_json()).unwrap();
+    let file_rec = build_file_record(&msg).unwrap();
+
+    println!("=== File Record (markdown) ===");
+    println!("repo_id:     {}", file_rec.repo_id);
+    println!("source_path: {}", file_rec.source_path);
+    println!("commit_id:   {}", file_rec.commit_id);
+    println!("language:    {:?}", file_rec.language);
+    assert_eq!(file_rec.language, Some("markdown"));
+
+    let snippet_recs = build_snippet_records(&msg);
+    println!("\n=== Snippet Records ({}) ===", snippet_recs.len());
+    assert_eq!(snippet_recs.len(), 2);
+    for (i, rec) in snippet_recs.iter().enumerate() {
+        println!("--- snippet[{}] ---", i);
+        println!("  source_type: {}", rec.source_type);
+        assert_eq!(rec.source_type, "doc");
+        println!("  content:\n{}", rec.content);
+    }
+}
+
+#[tokio::test]
+async fn test_markdown_summary_generation() {
+    let model_id = "global.anthropic.claude-haiku-4-5-20251001-v1:0";
+    let aws_config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
+    let bedrock = aws_sdk_bedrockruntime::Client::new(&aws_config);
+
+    let msg: FileMessage = serde_json::from_str(sample_markdown_json()).unwrap();
+    let snippet_recs = build_snippet_records(&msg);
+
+    for (i, rec) in snippet_recs.iter().enumerate() {
+        let description = summary::generate_summary(&bedrock, model_id, rec.content)
+            .await
+            .unwrap();
+        println!("--- markdown snippet[{i}] summary ---");
+        println!("  content:     {}", rec.content);
+        println!("  description: {description}");
     }
 }
 

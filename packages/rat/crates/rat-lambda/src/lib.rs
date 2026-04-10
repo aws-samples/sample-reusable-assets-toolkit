@@ -25,7 +25,6 @@ pub struct FileRecord<'a> {
 pub struct SnippetRecord<'a> {
     pub repo_id: &'a str,
     pub content: &'a str,
-    pub description: &'a str,
     pub source_type: &'a str,
     pub start_line: i32,
     pub end_line: i32,
@@ -48,11 +47,9 @@ pub fn build_snippet_records(msg: &FileMessage) -> Vec<SnippetRecord<'_>> {
     msg.chunks
         .iter()
         .map(|chunk| {
-            // TODO: LLM으로 description 생성
             SnippetRecord {
                 repo_id: &msg.repo_id,
                 content: &chunk.content,
-                description: &chunk.content,
                 source_type: chunk.source_type.as_str(),
                 start_line: chunk.start_line as i32,
                 end_line: chunk.end_line as i32,
