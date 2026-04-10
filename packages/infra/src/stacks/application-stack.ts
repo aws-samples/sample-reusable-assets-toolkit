@@ -1,10 +1,6 @@
-import {
-  CfnResource,
-  Duration,
-  Stack,
-  StackProps,
-} from 'aws-cdk-lib';
+import { CfnResource, Duration, Stack, StackProps } from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as eventsources from 'aws-cdk-lib/aws-lambda-event-sources';
@@ -14,8 +10,12 @@ import { SSM_KEYS } from ':idp-code/common-constructs';
 import { RustFunction } from 'cargo-lambda-cdk';
 import { Construct } from 'constructs';
 
+export interface ApplicationStackProps extends StackProps {
+  authenticatedRole: iam.IRole;
+}
+
 export class ApplicationStack extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, props: ApplicationStackProps) {
     super(scope, id, props);
 
     const vpcId = StringParameter.valueFromLookup(this, SSM_KEYS.VPC_ID);
@@ -153,5 +153,71 @@ export class ApplicationStack extends Stack {
       parameterName: SSM_KEYS.INGEST_QUEUE_URL,
       stringValue: queue.queueUrl,
     });
+
+    // ─── Search Lambda ────────────────────────────────────────────────
+    const searchFn = new RustFunction(this, 'SearchFunction', {
+      manifestPath: '../rat/Cargo.toml',
+      binaryName: 'bootstrap',
+      architecture: lambda.Architecture.ARM_64,
+      bundling: {
+        cargoLambdaFlags: ['-p', 'rat-search'],
+      },
+      memorySize: 512,
+      timeout: Duration.seconds(30),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      environment: {
+        RDS_PROXY_ENDPOINT: proxyEndpoint,
+        DB_SECRET_ARN: secretArn,
+      },
+    });
+
+    (searchFn.node.defaultChild as CfnResource).addMetadata('checkov', {
+      skip: [
+        {
+          id: 'CKV_AWS_115',
+          comment: 'Search Lambda concurrency managed at caller level',
+        },
+        {
+          id: 'CKV_AWS_116',
+          comment: 'Synchronous invoke, no DLQ needed',
+        },
+        {
+          id: 'CKV_AWS_173',
+          comment:
+            'Environment variables contain only endpoints and ARNs',
+        },
+      ],
+    });
+
+    dbSecret.grantRead(searchFn);
+    proxySg.connections.allowFrom(searchFn, ec2.Port.tcp(5432));
+
+    searchFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['bedrock:InvokeModel'],
+        resources: ['*'],
+      }),
+    );
+
+    new StringParameter(this, 'SearchFunctionArnParam', {
+      parameterName: SSM_KEYS.SEARCH_FUNCTION_ARN,
+      stringValue: searchFn.functionArn,
+    });
+
+    // ─── Cognito Authenticated Role Permissions ─────────────────────
+    searchFn.addPermission('AuthenticatedInvoke', {
+      principal: new iam.ArnPrincipal(props.authenticatedRole.roleArn),
+      action: 'lambda:InvokeFunction',
+    });
+
+    props.authenticatedRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ['ssm:GetParameter'],
+        resources: [
+          `arn:aws:ssm:${this.region}:${this.account}:parameter/idp-code/*`,
+        ],
+      }),
+    );
   }
 }

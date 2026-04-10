@@ -35,6 +35,10 @@ rand = "0.9"
 sha2 = "0.10"
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
+aws-config.workspace = true
+aws-sdk-cognitoidentity.workspace = true
+aws-sdk-ssm.workspace = true
+aws-sdk-lambda.workspace = true
 
 [dev-dependencies]
 tempfile = "3"

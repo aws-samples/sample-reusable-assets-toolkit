@@ -8,11 +8,19 @@ use serde::{Deserialize, Serialize};
 /// Per-profile configuration fields.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Profile {
-    pub sqs_queue_url: String,
     pub aws_region: String,
+    #[serde(default)]
     pub cognito_domain: String,
+    #[serde(default)]
     pub cognito_app_client_id: String,
+    #[serde(default)]
     pub cognito_identity_pool_id: String,
+    #[serde(default)]
+    pub cognito_user_pool_id: String,
+    #[serde(default)]
+    pub sqs_queue_url: String,
+    #[serde(default)]
+    pub search_function_arn: String,
 }
 
 /// Top-level config stored in `~/.config/rat/config.toml`.

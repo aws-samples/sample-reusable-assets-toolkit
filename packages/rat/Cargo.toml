@@ -5,6 +5,7 @@ members = [
     "crates/rat-cli",
     "crates/rat-lambda",
     "crates/rat-migration",
+    "crates/rat-search",
 ]
 
 [workspace.package]
@@ -22,5 +23,9 @@ pgvector = { version = "0.4", features = ["sqlx"] }
 envy = "0.4"
 aws-config = { version = "1", features = ["behavior-version-latest"] }
 aws-sdk-secretsmanager = "1"
+aws-sdk-bedrockruntime = "1"
+aws-sdk-cognitoidentity = "1"
+aws-sdk-ssm = "1"
+aws-sdk-lambda = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }

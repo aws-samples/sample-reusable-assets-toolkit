@@ -54,11 +54,17 @@ fn show(profile_name: Option<&str>) -> Result<()> {
     };
 
     println!("[{}]", label);
-    println!("sqs_queue_url          = {}", profile.sqs_queue_url);
-    println!("aws_region             = {}", profile.aws_region);
-    println!("cognito_domain         = {}", profile.cognito_domain);
-    println!("cognito_app_client_id  = {}", profile.cognito_app_client_id);
+    println!("aws_region               = {}", profile.aws_region);
+    println!("cognito_domain           = {}", profile.cognito_domain);
+    println!("cognito_app_client_id    = {}", profile.cognito_app_client_id);
     println!("cognito_identity_pool_id = {}", profile.cognito_identity_pool_id);
+    println!("cognito_user_pool_id     = {}", profile.cognito_user_pool_id);
+    if !profile.sqs_queue_url.is_empty() {
+        println!("sqs_queue_url            = {}", profile.sqs_queue_url);
+    }
+    if !profile.search_function_arn.is_empty() {
+        println!("search_function_arn      = {}", profile.search_function_arn);
+    }
     Ok(())
 }
 
@@ -72,11 +78,6 @@ fn interactive(profile_name: Option<&str>) -> Result<()> {
         active_item_style: Style::new().color256(183),
         ..ColorfulTheme::default()
     };
-
-    let sqs_queue_url: String = Input::with_theme(&theme)
-        .with_prompt("SQS Queue URL")
-        .with_initial_text(existing.as_ref().map_or("", |p| &p.sqs_queue_url))
-        .interact_text()?;
 
     let aws_region: String = Input::with_theme(&theme)
         .with_prompt("AWS Region")
@@ -98,12 +99,19 @@ fn interactive(profile_name: Option<&str>) -> Result<()> {
         .with_initial_text(existing.as_ref().map_or("", |p| &p.cognito_identity_pool_id))
         .interact_text()?;
 
+    let cognito_user_pool_id: String = Input::with_theme(&theme)
+        .with_prompt("Cognito User Pool ID")
+        .with_initial_text(existing.as_ref().map_or("", |p| &p.cognito_user_pool_id))
+        .interact_text()?;
+
     let new_profile = Profile {
-        sqs_queue_url,
         aws_region,
         cognito_domain,
         cognito_app_client_id,
         cognito_identity_pool_id,
+        cognito_user_pool_id,
+        sqs_queue_url: existing.as_ref().map_or(String::new(), |p| p.sqs_queue_url.clone()),
+        search_function_arn: existing.as_ref().map_or(String::new(), |p| p.search_function_arn.clone()),
     };
 
     let mut cfg = config::load_config()?.unwrap_or_else(|| RatConfig {

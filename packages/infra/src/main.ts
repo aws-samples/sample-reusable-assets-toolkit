@@ -30,6 +30,7 @@ const auth = new AuthStack(app, 'IDP-CODE-AUTH', {
 const application = new ApplicationStack(app, 'IDP-CODE-APPLICATION', {
   env,
   crossRegionReferences: true,
+  authenticatedRole: auth.authenticatedRole,
 });
 application.addDependency(auth);
 application.addDependency(storage);

@@ -46,6 +46,20 @@ enum Cli {
         #[arg(long)]
         profile: Option<String>,
     },
+    /// Search code snippets
+    Search {
+        /// Search query
+        query: String,
+        /// Filter by repository ID
+        #[arg(long)]
+        repo_id: Option<String>,
+        /// Maximum number of results
+        #[arg(long, default_value = "20")]
+        limit: i64,
+        /// Profile name (default: "default")
+        #[arg(long)]
+        profile: Option<String>,
+    },
 }
 
 #[tokio::main]
@@ -70,6 +84,9 @@ async fn main() -> anyhow::Result<()> {
         }
         Cli::Logout { profile } => {
             cmd::login::logout(profile.as_deref())?;
+        }
+        Cli::Search { query, repo_id, limit, profile } => {
+            cmd::search::handle(&query, repo_id.as_deref(), limit, profile.as_deref()).await?;
         }
     }
 
