@@ -5,7 +5,7 @@ AWS_REGION = "ap-northeast-2"
 [tasks.deploy]
 description = "Deploy a specific CDK stack (fzf)"
 run = """
-stack=$(echo "IDP-CODE-NETWORK\nIDP-CODE-STORAGE\nIDP-CODE-APPLICATION" | fzf --prompt="Select stack: ")
+stack=$(echo "IDP-CODE-NETWORK\nIDP-CODE-STORAGE\nIDP-CODE-APPLICATION\nIDP-CODE-AUTH" | fzf --prompt="Select stack: ")
 pnpm nx run @idp-code/infra:deploy $stack --output-style=stream
 """
 

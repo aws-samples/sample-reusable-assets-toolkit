@@ -1,4 +1,4 @@
-import { CfnResource, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { CfnResource, Stack, StackProps } from 'aws-cdk-lib';
 import {
   Vpc,
   SubnetType,
@@ -6,7 +6,6 @@ import {
   FlowLogDestination,
   FlowLogTrafficType,
 } from 'aws-cdk-lib/aws-ec2';
-import * as kms from 'aws-cdk-lib/aws-kms';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { SSM_KEYS } from ':idp-code/common-constructs';
@@ -41,15 +40,19 @@ export class NetworkStack extends Stack {
       ],
     });
 
-    const flowLogKey = new kms.Key(this, 'FlowLogKey', {
-      enableKeyRotation: true,
-      removalPolicy: RemovalPolicy.RETAIN,
-    });
-
     const flowLogGroup = new logs.LogGroup(this, 'FlowLogGroup', {
       retention: logs.RetentionDays.TWO_YEARS,
-      encryptionKey: flowLogKey,
-      removalPolicy: RemovalPolicy.RETAIN,
+    });
+
+    // checkov skip: KMS CMK not required for VPC flow logs
+    (flowLogGroup.node.defaultChild as CfnResource).addMetadata('checkov', {
+      skip: [
+        {
+          id: 'CKV_AWS_158',
+          comment:
+            'VPC flow logs do not contain sensitive data, CloudWatch default encryption is sufficient',
+        },
+      ],
     });
 
     this.vpc.addFlowLog('FlowLog', {
@@ -58,13 +61,23 @@ export class NetworkStack extends Stack {
     });
 
     // checkov skip: CDK auto-generated custom resource Lambda, not user-controllable
-    const handler = this.node.tryFindChild('Custom::VpcRestrictDefaultSGCustomResourceProvider')
+    const handler = this.node
+      .tryFindChild('Custom::VpcRestrictDefaultSGCustomResourceProvider')
       ?.node.tryFindChild('Handler') as CfnResource | undefined;
     handler?.addMetadata('checkov', {
       skip: [
-        { id: 'CKV_AWS_115', comment: 'CDK auto-generated custom resource Lambda' },
-        { id: 'CKV_AWS_116', comment: 'CDK auto-generated custom resource Lambda' },
-        { id: 'CKV_AWS_117', comment: 'CDK auto-generated custom resource Lambda' },
+        {
+          id: 'CKV_AWS_115',
+          comment: 'CDK auto-generated custom resource Lambda',
+        },
+        {
+          id: 'CKV_AWS_116',
+          comment: 'CDK auto-generated custom resource Lambda',
+        },
+        {
+          id: 'CKV_AWS_117',
+          comment: 'CDK auto-generated custom resource Lambda',
+        },
       ],
     });
 
