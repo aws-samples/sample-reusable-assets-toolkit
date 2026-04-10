@@ -18,27 +18,28 @@ serde.workspace = true
 serde_json.workspace = true
 clap = { version = "4", features = ["derive"] }
 git2 = "0.20"
-dialoguer = "0.11"
+dialoguer = "0.12"
 ignore = "0.4"
-tree-sitter = "0.25"
+tree-sitter = "0.26"
 tree-sitter-rust = "0.24"
-tree-sitter-javascript = "0.23"
+tree-sitter-javascript = "0.25"
 tree-sitter-typescript = "0.23"
-tree-sitter-python = "0.23"
-tree-sitter-go = "0.23"
+tree-sitter-python = "0.25"
+tree-sitter-go = "0.25"
 tree-sitter-java = "0.23"
-toml = "0.8"
+toml = "1.1"
 dirs = "6"
-reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+reqwest = { version = "0.13", features = ["json", "rustls", "form"], default-features = false }
 open = "5"
-rand = "0.9"
-sha2 = "0.10"
+rand = "0.10"
+sha2 = "0.11"
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
 aws-config.workspace = true
 aws-sdk-cognitoidentity.workspace = true
 aws-sdk-ssm.workspace = true
 aws-sdk-lambda.workspace = true
+aws-sdk-sqs.workspace = true
 rat-core.workspace = true
 
 [dev-dependencies]

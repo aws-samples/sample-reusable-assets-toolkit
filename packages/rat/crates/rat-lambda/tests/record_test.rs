@@ -151,6 +151,23 @@ async fn test_markdown_summary_generation() {
     }
 }
 
+#[tokio::test]
+async fn test_embedding_generation() {
+    let aws_config = aws_config::defaults(aws_config::BehaviorVersion::latest())
+        .region(aws_config::Region::new("us-east-1"))
+        .load()
+        .await;
+    let bedrock = aws_sdk_bedrockruntime::Client::new(&aws_config);
+
+    let text = "fn main() {\n    println!(\"hello\");\n}";
+    let embedding = rat_core::embedding::generate_embedding(&bedrock, text, "GENERIC_INDEX")
+        .await
+        .unwrap();
+
+    println!("embedding dimensions: {}", embedding.len());
+    assert_eq!(embedding.len(), 1024);
+}
+
 #[test]
 fn test_delete_record() {
     let msg: FileMessage = serde_json::from_str(sample_delete_json()).unwrap();

@@ -133,6 +133,29 @@ pub fn load_token(profile_name: Option<&str>) -> Result<Option<TokenSet>> {
     Ok(creds.get(key).cloned())
 }
 
+/// Load token, refreshing automatically if expired.
+/// Returns `None` if no token is stored.
+pub async fn load_valid_token(
+    profile: &Profile,
+    profile_name: Option<&str>,
+) -> Result<Option<TokenSet>> {
+    let token = match load_token(profile_name)? {
+        Some(t) => t,
+        None => return Ok(None),
+    };
+
+    let now = chrono::Utc::now().timestamp();
+    // Refresh if token expires within 60 seconds
+    if now < token.expires_at - 60 {
+        return Ok(Some(token));
+    }
+
+    eprintln!("Token expired, refreshing...");
+    let refreshed = crate::auth::refresh_token(profile, &token.refresh_token).await?;
+    save_token(profile_name, &refreshed)?;
+    Ok(Some(refreshed))
+}
+
 /// Save token set for a specific profile.
 pub fn save_token(profile_name: Option<&str>, token: &TokenSet) -> Result<()> {
     let key = profile_name.unwrap_or("default").to_string();

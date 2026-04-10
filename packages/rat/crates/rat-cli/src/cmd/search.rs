@@ -42,7 +42,7 @@ pub async fn handle(
     let cfg = config::load_config()?.context("No configuration found. Run `rat configure` first.")?;
     let mut profile = config::resolve_profile(&cfg, profile_name)
         .context("Profile not found")?;
-    let token = config::load_token(profile_name)?
+    let token = config::load_valid_token(&profile, profile_name).await?
         .context("Not logged in. Run `rat login` first.")?;
 
     let aws_config = aws::load_aws_config(&profile, &token).await?;

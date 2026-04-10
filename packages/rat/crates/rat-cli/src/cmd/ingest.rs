@@ -1,10 +1,12 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
+use aws_sdk_sqs::Client as SqsClient;
 use dialoguer::console::Style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Select};
 
+use rat_cli::{aws, config};
 use rat_core::message::{Action, ChunkEntry, FileMessage, SourceType};
 use rat_cli::{chunk, git, ratignore};
 
@@ -17,7 +19,18 @@ fn source_type_for(path: &Path) -> SourceType {
     }
 }
 
-pub fn handle(target: &str, force: bool, since: Option<&str>) -> Result<()> {
+async fn send_message(sqs: &SqsClient, queue_url: &str, msg: &FileMessage) -> Result<()> {
+    let body = serde_json::to_string(msg)?;
+    sqs.send_message()
+        .queue_url(queue_url)
+        .message_body(body)
+        .send()
+        .await
+        .context("failed to send SQS message")?;
+    Ok(())
+}
+
+pub async fn handle(target: &str, force: bool, since: Option<&str>, profile_name: Option<&str>) -> Result<()> {
     let target_path = Path::new(target).canonicalize()?;
     let repo_root = git::discover_repo_root(&target_path)?;
 
@@ -85,6 +98,20 @@ pub fn handle(target: &str, force: bool, since: Option<&str>) -> Result<()> {
         return Ok(());
     }
 
+    // AWS 설정 및 SQS 클라이언트 초기화
+    let cfg = config::load_config()?.context("No configuration found. Run `rat configure` first.")?;
+    let mut profile = config::resolve_profile(&cfg, profile_name).context("Profile not found")?;
+    let token = config::load_valid_token(&profile, profile_name).await?
+        .context("Not logged in. Run `rat login` first.")?;
+
+    let aws_config = aws::load_aws_config(&profile, &token).await?;
+    let ssm = aws_sdk_ssm::Client::new(&aws_config);
+    aws::resolve_ssm_values(profile_name, &mut profile, &ssm).await?;
+
+    anyhow::ensure!(!profile.sqs_queue_url.is_empty(), "sqs_queue_url not configured");
+    let queue_url = &profile.sqs_queue_url;
+    let sqs = SqsClient::new(&aws_config);
+
     let extra_dirs: Vec<PathBuf> = prefix
         .as_ref()
         .map(|p| vec![repo_root.join(p)])
@@ -131,6 +158,7 @@ pub fn handle(target: &str, force: bool, since: Option<&str>) -> Result<()> {
 
     // force: 레포 전체 삭제 메시지 먼저 전송
     if force {
+        eprintln!("Sending purge message...");
         let purge = FileMessage {
             action: Action::Purge,
             repo_id: repo_url.clone(),
@@ -139,11 +167,12 @@ pub fn handle(target: &str, force: bool, since: Option<&str>) -> Result<()> {
             content: None,
             chunks: Vec::new(),
         };
-        println!("{}", serde_json::to_string(&purge)?);
+        send_message(&sqs, queue_url, &purge).await?;
     }
 
     // 삭제 메시지 전송
     for file in &deleted_files {
+        eprintln!("[delete] {}", file.display());
         let msg = FileMessage {
             action: Action::Delete,
             repo_id: repo_url.clone(),
@@ -152,11 +181,12 @@ pub fn handle(target: &str, force: bool, since: Option<&str>) -> Result<()> {
             content: None,
             chunks: Vec::new(),
         };
-        println!("{}", serde_json::to_string(&msg)?);
+        send_message(&sqs, queue_url, &msg).await?;
     }
 
     let mut total_chunks = 0;
-    for file in &supported {
+    let total_files = supported.len();
+    for (i, file) in supported.iter().enumerate() {
         let abs_path = repo_root.join(file);
         let chunks = match chunk::chunk_file(&abs_path) {
             Ok(c) => c,
@@ -200,9 +230,10 @@ pub fn handle(target: &str, force: bool, since: Option<&str>) -> Result<()> {
             chunks: chunk_entries,
         };
 
-        println!("{}", serde_json::to_string(&msg)?);
+        eprintln!("[{}/{}] {}", i + 1, total_files, file.display());
+        send_message(&sqs, queue_url, &msg).await?;
     }
-    eprintln!("{} chunks from {} files", total_chunks, supported.len());
+    eprintln!("{} chunks from {} files sent.", total_chunks, total_files);
 
     Ok(())
 }

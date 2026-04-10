@@ -23,6 +23,9 @@ enum Cli {
         /// Previous commit id. If provided, only changed/deleted files since this commit are processed.
         #[arg(long)]
         since: Option<String>,
+        /// Profile name (default: "default")
+        #[arg(long)]
+        profile: Option<String>,
     },
     /// Chunk a file using tree-sitter AST
     Chunk {
@@ -70,8 +73,8 @@ async fn main() -> anyhow::Result<()> {
         Cli::Configure { action, profile } => {
             cmd::configure::handle(action, profile.as_deref())?;
         }
-        Cli::Ingest { target, force, since } => {
-            cmd::ingest::handle(&target, force, since.as_deref())?;
+        Cli::Ingest { target, force, since, profile } => {
+            cmd::ingest::handle(&target, force, since.as_deref(), profile.as_deref()).await?;
         }
         Cli::Chunk { file } => {
             cmd::chunk::handle(&file)?;

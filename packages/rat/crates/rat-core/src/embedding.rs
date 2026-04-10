@@ -43,6 +43,7 @@ struct EmbeddingEntry {
 pub async fn generate_embedding(
     client: &Client,
     text: &str,
+    purpose: &str,
 ) -> Result<Vec<f32>, aws_sdk_bedrockruntime::Error> {
     let value = text.trim();
     if value.is_empty() {
@@ -54,7 +55,7 @@ pub async fn generate_embedding(
     let request = EmbeddingRequest {
         task_type: "SINGLE_EMBEDDING",
         single_embedding_params: SingleEmbeddingParams {
-            embedding_purpose: "GENERIC_INDEX",
+            embedding_purpose: purpose,
             embedding_dimension: EMBEDDING_DIMENSION,
             text: TextParam {
                 truncation_mode: "END",

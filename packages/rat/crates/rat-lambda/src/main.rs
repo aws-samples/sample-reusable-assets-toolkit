@@ -30,7 +30,10 @@ async fn init() -> Result<AppState, Error> {
         db::create_pool_from_secret(&config.db_secret_arn, &config.rds_proxy_endpoint).await?;
     info!("DB pool ready");
 
-    let aws_config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
+    let aws_config = aws_config::defaults(aws_config::BehaviorVersion::latest())
+        .region(aws_config::Region::new("us-east-1"))
+        .load()
+        .await;
     let bedrock = BedrockClient::new(&aws_config);
 
     Ok(AppState {
@@ -109,7 +112,7 @@ async fn handle_upsert(state: &AppState, msg: &FileMessage) -> Result<(), Error>
                 .await
                 .map_err(|e| format!("summary error: {e}"))?;
 
-        let emb = embedding::generate_embedding(&state.bedrock, &description)
+        let emb = embedding::generate_embedding(&state.bedrock, &description, "GENERIC_INDEX")
             .await
             .map_err(|e| format!("embedding error: {e}"))?;
 

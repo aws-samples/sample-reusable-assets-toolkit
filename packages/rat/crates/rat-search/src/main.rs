@@ -89,7 +89,7 @@ async fn handler(
     let req = event.payload;
     info!(query = %req.query, repo_id = ?req.repo_id, "Search request");
 
-    let query_embedding = embedding::generate_embedding(&state.bedrock, &req.query).await?;
+    let query_embedding = embedding::generate_embedding(&state.bedrock, &req.query, "GENERIC_RETRIEVAL").await?;
 
     let (fts_rows, vec_rows) = tokio::join!(
         full_text_search(&state.pool, &req),
