@@ -2427,7 +2427,6 @@ dependencies = [
  "ignore",
  "open",
  "rand 0.9.2",
- "rat-core",
  "reqwest",
  "serde",
  "serde_json",
@@ -2449,8 +2448,13 @@ name = "rat-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "aws-config",
+ "aws-sdk-secretsmanager",
  "serde",
  "serde_json",
+ "sqlx",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2468,6 +2472,23 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "rat-migration"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "aws-config",
+ "aws-sdk-secretsmanager",
+ "envy",
+ "lambda_runtime",
+ "rat-core",
+ "serde",
+ "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",

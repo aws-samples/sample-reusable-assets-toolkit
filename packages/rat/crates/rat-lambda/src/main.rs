@@ -1,7 +1,6 @@
 use aws_lambda_events::sqs::SqsEvent;
-use aws_sdk_secretsmanager::Client as SecretsClient;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
-use rat_core::db::RdsSecret;
+use rat_core::db;
 use serde::Deserialize;
 use sqlx::PgPool;
 use tracing::{error, info};
@@ -17,49 +16,13 @@ struct AppState {
 }
 
 async fn init() -> Result<AppState, Error> {
-    tracing_subscriber::fmt()
-        .json()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive(tracing::Level::INFO.into()),
-        )
-        .without_time() // Lambda adds timestamp
-        .init();
+    rat_core::logging::init_lambda_tracing();
 
     info!("Initializing Lambda");
-
     let config: Config = envy::from_env()?;
-
-    let aws_config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
-    let secrets_client = SecretsClient::new(&aws_config);
-
-    // Fetch DB secret
-    info!(secret_arn = %config.db_secret_arn, "Fetching DB secret");
-    let secret_value = secrets_client
-        .get_secret_value()
-        .secret_id(&config.db_secret_arn)
-        .send()
-        .await?;
-    let secret_str = secret_value.secret_string().unwrap_or_default();
-    let rds_secret: RdsSecret = serde_json::from_str(secret_str)?;
-
-    // Create connection pool (use proxy endpoint instead of direct host)
-    info!(proxy = %config.rds_proxy_endpoint, db = %rds_secret.dbname, "Connecting to DB via RDS Proxy");
-    let conn_str = format!(
-        "postgres://{}:{}@{}:{}/{}",
-        rds_secret.username,
-        rds_secret.password,
-        config.rds_proxy_endpoint,
-        rds_secret.port,
-        rds_secret.dbname,
-    );
-    let pool = PgPool::connect(&conn_str).await?;
-
-    // Ensure pgvector extension
-    sqlx::query("CREATE EXTENSION IF NOT EXISTS vector")
-        .execute(&pool)
-        .await?;
-    info!("pgvector extension ready");
+    let pool =
+        db::create_pool_from_secret(&config.db_secret_arn, &config.rds_proxy_endpoint).await?;
+    info!("DB pool ready");
 
     Ok(AppState { pool })
 }

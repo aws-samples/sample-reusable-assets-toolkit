@@ -1,4 +1,9 @@
-import { CfnResource, Duration, Stack, StackProps } from 'aws-cdk-lib';
+import {
+  CfnResource,
+  Duration,
+  Stack,
+  StackProps,
+} from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
@@ -40,13 +45,48 @@ export class ApplicationStack extends Stack {
       proxySgId,
     );
 
-    // Dead letter queue
+    // ─── Database Migration Lambda ────────────────────────────────────
+    const migrationFn = new RustFunction(this, 'MigrationFunction', {
+      manifestPath: '../rat/Cargo.toml',
+      binaryName: 'bootstrap',
+      architecture: lambda.Architecture.ARM_64,
+      bundling: {
+        cargoLambdaFlags: ['-p', 'rat-migration'],
+      },
+      memorySize: 256,
+      timeout: Duration.minutes(5),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      environment: {
+        DB_SECRET_ARN: secretArn,
+        RDS_PROXY_ENDPOINT: proxyEndpoint,
+      },
+    });
+
+    (migrationFn.node.defaultChild as CfnResource).addMetadata('checkov', {
+      skip: [
+        {
+          id: 'CKV_AWS_115',
+          comment: 'One-shot migration, no concurrency needed',
+        },
+        { id: 'CKV_AWS_116', comment: 'Manually invoked migration' },
+        {
+          id: 'CKV_AWS_173',
+          comment: 'Environment variables contain only endpoints and ARNs',
+        },
+      ],
+    });
+
+    dbSecret.grantRead(migrationFn);
+
+    proxySg.connections.allowFrom(migrationFn, ec2.Port.tcp(5432));
+
+    // ─── Dead Letter Queue ──────────────────────────────────────────────
     const dlq = new sqs.Queue(this, 'IngestDlq', {
       retentionPeriod: Duration.days(14),
       encryption: sqs.QueueEncryption.SQS_MANAGED,
     });
 
-    // Ingest queue
     const queue = new sqs.Queue(this, 'IngestQueue', {
       visibilityTimeout: Duration.minutes(10),
       encryption: sqs.QueueEncryption.SQS_MANAGED,
@@ -56,7 +96,6 @@ export class ApplicationStack extends Stack {
       },
     });
 
-    // checkov skip: SQS-managed SSE enabled, KMS CMK not required
     (dlq.node.defaultChild as CfnResource).addMetadata('checkov', {
       skip: [{ id: 'CKV_AWS_27', comment: 'Using SQS-managed SSE' }],
     });
@@ -64,7 +103,7 @@ export class ApplicationStack extends Stack {
       skip: [{ id: 'CKV_AWS_27', comment: 'Using SQS-managed SSE' }],
     });
 
-    // Consumer Lambda (Rust via cargo-lambda)
+    // ─── Consumer Lambda (Rust via cargo-lambda) ────────────────────────
     const consumer = new RustFunction(this, 'IngestConsumer', {
       manifestPath: '../rat/Cargo.toml',
       binaryName: 'bootstrap',
@@ -82,19 +121,25 @@ export class ApplicationStack extends Stack {
       },
     });
 
-    // checkov skip for IngestConsumer Lambda
     (consumer.node.defaultChild as CfnResource).addMetadata('checkov', {
       skip: [
-        { id: 'CKV_AWS_115', comment: 'Concurrency managed by SQS event source batch size' },
-        { id: 'CKV_AWS_116', comment: 'DLQ configured on source SQS queue, not on Lambda' },
-        { id: 'CKV_AWS_173', comment: 'Environment variables contain only endpoints and ARNs, not sensitive data' },
+        {
+          id: 'CKV_AWS_115',
+          comment: 'Concurrency managed by SQS event source batch size',
+        },
+        {
+          id: 'CKV_AWS_116',
+          comment: 'DLQ configured on source SQS queue, not on Lambda',
+        },
+        {
+          id: 'CKV_AWS_173',
+          comment: 'Environment variables contain only endpoints and ARNs',
+        },
       ],
     });
 
-    // Allow Lambda to access RDS Proxy
     proxySg.connections.allowFrom(consumer, ec2.Port.tcp(5432));
 
-    // SQS -> Lambda trigger
     consumer.addEventSource(
       new eventsources.SqsEventSource(queue, {
         batchSize: 10,
@@ -102,10 +147,8 @@ export class ApplicationStack extends Stack {
       }),
     );
 
-    // Grant DB secret read
     dbSecret.grantRead(consumer);
 
-    // SSM parameters
     new StringParameter(this, 'IngestQueueUrlParam', {
       parameterName: SSM_KEYS.INGEST_QUEUE_URL,
       stringValue: queue.queueUrl,
