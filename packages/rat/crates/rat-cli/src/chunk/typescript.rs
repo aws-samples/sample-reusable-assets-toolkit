@@ -6,10 +6,6 @@ use super::javascript::js_import_symbols;
 pub struct TypeScript;
 
 impl Language for TypeScript {
-    fn name(&self) -> &'static str {
-        "typescript"
-    }
-
     fn ts_language(&self) -> tree_sitter::Language {
         tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into()
     }
@@ -46,10 +42,6 @@ impl Language for TypeScript {
 pub struct Tsx;
 
 impl Language for Tsx {
-    fn name(&self) -> &'static str {
-        "typescript"
-    }
-
     fn ts_language(&self) -> tree_sitter::Language {
         tree_sitter_typescript::LANGUAGE_TSX.into()
     }

@@ -5,10 +5,6 @@ use super::code::Language;
 pub struct Go;
 
 impl Language for Go {
-    fn name(&self) -> &'static str {
-        "go"
-    }
-
     fn ts_language(&self) -> tree_sitter::Language {
         tree_sitter_go::LANGUAGE.into()
     }

@@ -6,7 +6,6 @@ use tree_sitter::{Node, Parser};
 use super::Chunk;
 
 pub trait Language {
-    fn name(&self) -> &'static str;
     fn ts_language(&self) -> tree_sitter::Language;
 
     /// 청크로 추출할 최상위 노드 종류

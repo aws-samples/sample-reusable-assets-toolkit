@@ -5,10 +5,6 @@ use super::code::Language;
 pub struct Python;
 
 impl Language for Python {
-    fn name(&self) -> &'static str {
-        "python"
-    }
-
     fn ts_language(&self) -> tree_sitter::Language {
         tree_sitter_python::LANGUAGE.into()
     }

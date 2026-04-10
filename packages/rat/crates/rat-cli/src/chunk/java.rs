@@ -5,10 +5,6 @@ use super::code::Language;
 pub struct Java;
 
 impl Language for Java {
-    fn name(&self) -> &'static str {
-        "java"
-    }
-
     fn ts_language(&self) -> tree_sitter::Language {
         tree_sitter_java::LANGUAGE.into()
     }

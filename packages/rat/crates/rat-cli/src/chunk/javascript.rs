@@ -5,10 +5,6 @@ use super::code::Language;
 pub struct JavaScript;
 
 impl Language for JavaScript {
-    fn name(&self) -> &'static str {
-        "javascript"
-    }
-
     fn ts_language(&self) -> tree_sitter::Language {
         tree_sitter_javascript::LANGUAGE.into()
     }

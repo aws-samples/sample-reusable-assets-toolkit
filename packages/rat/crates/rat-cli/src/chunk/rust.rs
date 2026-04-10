@@ -5,10 +5,6 @@ use super::code::Language;
 pub struct Rust;
 
 impl Language for Rust {
-    fn name(&self) -> &'static str {
-        "rust"
-    }
-
     fn ts_language(&self) -> tree_sitter::Language {
         tree_sitter_rust::LANGUAGE.into()
     }

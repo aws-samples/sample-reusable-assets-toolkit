@@ -21,11 +21,6 @@ export class AuthStack extends Stack {
       selfSignUpEnabled: false,
       signInAliases: { email: true },
       autoVerify: { email: true },
-      featurePlan: cognito.FeaturePlan.ESSENTIALS,
-      signInPolicy: {
-        allowedFirstAuthFactors: { password: true, passkey: true },
-      },
-      passkeyRelyingPartyId: relyingPartyDomain,
       passwordPolicy: {
         minLength: 8,
         requireUppercase: true,
@@ -64,14 +59,16 @@ export class AuthStack extends Stack {
       ],
     });
 
+    // Ensure PKCE (S256) is explicitly allowed for Managed Login v2
+    const cfnClient = appClient.node.defaultChild as cognito.CfnUserPoolClient;
+    cfnClient.addPropertyOverride('AllowedOAuthFlowsUserPoolClient', true);
+
     // Managed Login branding (Cognito default style)
     new cognito.CfnManagedLoginBranding(this, 'ManagedLoginBranding', {
       userPoolId: userPool.userPoolId,
       clientId: appClient.userPoolClientId,
       useCognitoProvidedValues: true,
     });
-
-    // --- Cognito Identity Pool ---
     const identityPool = new IdentityPool(this, 'IdentityPool', {
       allowUnauthenticatedIdentities: false,
       authenticationProviders: {
