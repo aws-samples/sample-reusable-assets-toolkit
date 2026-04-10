@@ -5,7 +5,7 @@ use dialoguer::console::Style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Select};
 
-use rat_cli::message::{Action, ChunkEntry, FileMessage, SourceType};
+use rat_core::message::{Action, ChunkEntry, FileMessage, SourceType};
 use rat_cli::{chunk, git, ratignore};
 
 fn source_type_for(path: &Path) -> SourceType {

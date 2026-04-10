@@ -3,6 +3,10 @@ name = "rat-lambda"
 version.workspace = true
 edition.workspace = true
 
+[lib]
+name = "rat_lambda"
+path = "src/lib.rs"
+
 [[bin]]
 name = "bootstrap"
 path = "src/main.rs"
@@ -20,5 +24,6 @@ pgvector.workspace = true
 envy.workspace = true
 aws-config.workspace = true
 aws-sdk-secretsmanager.workspace = true
+aws-sdk-bedrockruntime.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true

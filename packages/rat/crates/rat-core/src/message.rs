@@ -1,24 +1,24 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// SQS로 전송할 파일 단위 메시지.
 /// Consumer Lambda가 수신하여 파일 원본 저장 + 청크별 LLM 설명 생성 + 임베딩 후 DB에 저장한다.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FileMessage {
     pub action: Action,
     pub repo_id: String,
     pub commit_id: String,
     /// Purge일 때는 None
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_path: Option<String>,
     /// Upsert가 아닐 때는 None
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     /// Upsert가 아닐 때는 비어있음
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub chunks: Vec<ChunkEntry>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Action {
     /// 파일 upsert (원본 저장 + 청크 저장)
@@ -29,7 +29,7 @@ pub enum Action {
     Purge,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChunkEntry {
     pub source_type: SourceType,
     pub start_line: usize,
@@ -37,9 +37,18 @@ pub struct ChunkEntry {
     pub content: String,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum SourceType {
     Code,
     Doc,
+}
+
+impl SourceType {
+    pub fn as_str(&self) -> &str {
+        match self {
+            SourceType::Code => "code",
+            SourceType::Doc => "doc",
+        }
+    }
 }
