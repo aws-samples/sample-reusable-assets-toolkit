@@ -79,9 +79,9 @@ pub struct TokenSet {
     pub expires_at: i64,
 }
 
-/// Return `~/.config/rat/credentials.json`.
+/// Return `~/.config/rat/credentials.toml`.
 pub fn credentials_path() -> Result<PathBuf> {
-    Ok(config_dir()?.join("credentials.json"))
+    Ok(config_dir()?.join("credentials.toml"))
 }
 
 /// Load all credentials. Returns empty map if file does not exist.
@@ -93,7 +93,7 @@ pub fn load_credentials() -> Result<HashMap<String, TokenSet>> {
     let text = fs::read_to_string(&path)
         .with_context(|| format!("failed to read {}", path.display()))?;
     let creds: HashMap<String, TokenSet> =
-        serde_json::from_str(&text).with_context(|| format!("failed to parse {}", path.display()))?;
+        toml::from_str(&text).with_context(|| format!("failed to parse {}", path.display()))?;
     Ok(creds)
 }
 
@@ -104,7 +104,7 @@ pub fn save_credentials(creds: &HashMap<String, TokenSet>) -> Result<()> {
         fs::create_dir_all(parent)
             .with_context(|| format!("failed to create {}", parent.display()))?;
     }
-    let text = serde_json::to_string_pretty(creds).context("failed to serialize credentials")?;
+    let text = toml::to_string_pretty(creds).context("failed to serialize credentials")?;
     fs::write(&path, &text)
         .with_context(|| format!("failed to write {}", path.display()))?;
 

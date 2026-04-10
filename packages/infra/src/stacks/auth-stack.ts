@@ -40,9 +40,6 @@ export class AuthStack extends Stack {
     // Public app client (PKCE, no secret)
     const appClient = userPool.addClient('CliClient', {
       generateSecret: false,
-      authFlows: {
-        custom: true,
-      },
       oAuth: {
         flows: { authorizationCodeGrant: true },
         scopes: [
@@ -58,10 +55,6 @@ export class AuthStack extends Stack {
         cognito.UserPoolClientIdentityProvider.COGNITO,
       ],
     });
-
-    // Ensure PKCE (S256) is explicitly allowed for Managed Login v2
-    const cfnClient = appClient.node.defaultChild as cognito.CfnUserPoolClient;
-    cfnClient.addPropertyOverride('AllowedOAuthFlowsUserPoolClient', true);
 
     // Managed Login branding (Cognito default style)
     new cognito.CfnManagedLoginBranding(this, 'ManagedLoginBranding', {
