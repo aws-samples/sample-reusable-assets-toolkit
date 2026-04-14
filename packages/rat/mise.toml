@@ -1,3 +1,6 @@
+[env]
+_.file = ".env"
+
 [tasks.rat]
 description = "Run rat CLI"
 run = "cargo run -p rat-cli --"
@@ -25,3 +28,25 @@ run = "cargo fmt --all"
 [tasks.lambda-build]
 description = "Build Lambda binary (AL2023 target)"
 run = "cargo build -p rat-lambda --release --target aarch64-unknown-linux-gnu"
+
+[tasks.publish-cli]
+description = "Build rat CLI (aarch64-apple-darwin) and upload to GitLab Generic Package Registry"
+run = '''
+set -euo pipefail
+
+TARGET=aarch64-apple-darwin
+VERSION=$(cargo pkgid -p rat-cli | sed 's/.*[#@]//')
+BINARY=target/${TARGET}/release/rat
+ASSET_NAME=rat-${TARGET}
+URL="https://gitlab.aws.dev/api/v4/projects/${GITLAB_PROJECT_ID}/packages/generic/rat-cli/${VERSION}/${ASSET_NAME}"
+
+echo "Building rat-cli ${VERSION} for ${TARGET}..."
+cargo build --release --bin rat --target "${TARGET}"
+
+echo "Uploading to ${URL}"
+curl --fail --header "PRIVATE-TOKEN: ${GITLAB_TOKEN}" \
+  --upload-file "${BINARY}" \
+  "${URL}"
+echo
+echo "Done."
+'''

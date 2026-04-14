@@ -67,6 +67,12 @@ enum Cli {
         #[arg(long)]
         profile: Option<String>,
     },
+    /// Run rat as a stdio MCP server exposing the search tool
+    Mcp {
+        /// Profile name (default: "default")
+        #[arg(long)]
+        profile: Option<String>,
+    },
     /// Search code snippets
     Search {
         /// Search query
@@ -114,6 +120,9 @@ async fn main() -> anyhow::Result<()> {
         }
         Cli::Purge { repo_id, profile } => {
             cmd::purge::handle(&repo_id, profile.as_deref()).await?;
+        }
+        Cli::Mcp { profile } => {
+            cmd::mcp::handle(profile.as_deref()).await?;
         }
         Cli::Search { query, repo_id, source_type, limit, profile } => {
             cmd::search::handle(&query, repo_id.as_deref(), &source_type, limit, profile.as_deref()).await?;

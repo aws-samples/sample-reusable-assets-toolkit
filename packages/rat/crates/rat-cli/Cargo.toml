@@ -41,6 +41,10 @@ aws-sdk-ssm.workspace = true
 aws-sdk-lambda.workspace = true
 aws-sdk-sqs.workspace = true
 rat-core.workspace = true
+rmcp = { version = "1.4", features = ["server", "macros", "transport-io"] }
+schemars = "1"
+tracing.workspace = true
+tracing-subscriber.workspace = true
 
 [dev-dependencies]
 tempfile = "3"

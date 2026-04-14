@@ -17,13 +17,13 @@ struct ListResponse {
 }
 
 #[derive(Deserialize)]
-struct RepoRow {
-    repo_id: String,
-    file_count: i64,
-    snippet_count: i64,
+pub(crate) struct RepoRow {
+    pub repo_id: String,
+    pub file_count: i64,
+    pub snippet_count: i64,
 }
 
-pub async fn handle(profile_name: Option<&str>) -> Result<()> {
+pub(crate) async fn run_list(profile_name: Option<&str>) -> Result<Vec<RepoRow>> {
     let cfg = config::load_config()?.context("No configuration found. Run `rat configure` first.")?;
     let mut profile = config::resolve_profile(&cfg, profile_name)
         .context("Profile not found")?;
@@ -65,13 +65,19 @@ pub async fn handle(profile_name: Option<&str>) -> Result<()> {
     let list_response: ListResponse =
         serde_json::from_slice(payload.as_ref()).context("failed to parse list response")?;
 
-    if list_response.repos.is_empty() {
+    Ok(list_response.repos)
+}
+
+pub async fn handle(profile_name: Option<&str>) -> Result<()> {
+    let repos = run_list(profile_name).await?;
+
+    if repos.is_empty() {
         println!("No repositories indexed.");
         return Ok(());
     }
 
     println!("{:<60}  {:>10}  {:>12}", "REPO_ID", "FILES", "SNIPPETS");
-    for repo in &list_response.repos {
+    for repo in &repos {
         println!(
             "{:<60}  {:>10}  {:>12}",
             repo.repo_id, repo.file_count, repo.snippet_count

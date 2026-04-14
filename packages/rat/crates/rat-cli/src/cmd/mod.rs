@@ -3,6 +3,7 @@ pub mod configure;
 pub mod ingest;
 pub mod list;
 pub mod login;
+pub mod mcp;
 pub mod purge;
 pub mod search;
 pub mod status;

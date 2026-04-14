@@ -26,27 +26,27 @@ struct SearchResponse {
 }
 
 #[derive(Deserialize)]
-struct SearchResult {
-    id: i64,
-    repo_id: String,
-    source_path: String,
-    content: String,
-    description: String,
-    source_type: String,
-    symbol_name: Option<String>,
-    start_line: Option<i32>,
-    end_line: Option<i32>,
-    language: Option<String>,
-    score: f64,
+pub(crate) struct SearchResult {
+    pub id: i64,
+    pub repo_id: String,
+    pub source_path: String,
+    pub content: String,
+    pub description: String,
+    pub source_type: String,
+    pub symbol_name: Option<String>,
+    pub start_line: Option<i32>,
+    pub end_line: Option<i32>,
+    pub language: Option<String>,
+    pub score: f64,
 }
 
-pub async fn handle(
+pub(crate) async fn run_search(
     query: &str,
     repo_id: Option<&str>,
     source_type: &str,
     limit: i64,
     profile_name: Option<&str>,
-) -> Result<()> {
+) -> Result<Vec<SearchResult>> {
     let cfg = config::load_config()?.context("No configuration found. Run `rat configure` first.")?;
     let mut profile = config::resolve_profile(&cfg, profile_name)
         .context("Profile not found")?;
@@ -93,7 +93,19 @@ pub async fn handle(
     let search_response: SearchResponse =
         serde_json::from_slice(payload.as_ref()).context("failed to parse search response")?;
 
-    for result in &search_response.results {
+    Ok(search_response.results)
+}
+
+pub async fn handle(
+    query: &str,
+    repo_id: Option<&str>,
+    source_type: &str,
+    limit: i64,
+    profile_name: Option<&str>,
+) -> Result<()> {
+    let results = run_search(query, repo_id, source_type, limit, profile_name).await?;
+
+    for result in &results {
         println!("─── [{}] {} (score: {:.4}) ───", result.id, result.source_path, result.score);
         print!("  repo: {}  type: {}", result.repo_id, result.source_type);
         if let Some(ref symbol) = result.symbol_name {
@@ -112,7 +124,7 @@ pub async fn handle(
         println!();
     }
 
-    if search_response.results.is_empty() {
+    if results.is_empty() {
         println!("No results found.");
     }
 
