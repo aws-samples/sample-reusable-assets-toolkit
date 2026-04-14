@@ -6,7 +6,7 @@ use aws_sdk_ssm::Client as SsmClient;
 use crate::config::{self, Profile, TokenSet};
 
 const SSM_INGEST_QUEUE_URL: &str = "/idp-code/ingest/queue-url";
-const SSM_SEARCH_FUNCTION_ARN: &str = "/idp-code/search/function-arn";
+const SSM_API_FUNCTION_ARN: &str = "/idp-code/api/function-arn";
 
 /// Cognito Identity Pool의 id_token으로 AWS credentials를 얻어 SdkConfig를 반환한다.
 pub async fn load_aws_config(profile: &Profile, token: &TokenSet) -> Result<aws_config::SdkConfig> {
@@ -68,7 +68,7 @@ pub async fn load_aws_config(profile: &Profile, token: &TokenSet) -> Result<aws_
     Ok(sdk_config)
 }
 
-/// Profile의 SSM 기반 값(sqs_queue_url, search_function_arn)이 없으면 SSM에서 가져와 config에 저장한다.
+/// Profile의 SSM 기반 값(sqs_queue_url, api_function_arn)이 없으면 SSM에서 가져와 config에 저장한다.
 pub async fn resolve_ssm_values(
     profile_name: Option<&str>,
     profile: &mut Profile,
@@ -81,8 +81,8 @@ pub async fn resolve_ssm_values(
         updated = true;
     }
 
-    if profile.search_function_arn.is_empty() {
-        profile.search_function_arn = get_ssm_parameter(ssm, SSM_SEARCH_FUNCTION_ARN).await?;
+    if profile.api_function_arn.is_empty() {
+        profile.api_function_arn = get_ssm_parameter(ssm, SSM_API_FUNCTION_ARN).await?;
         updated = true;
     }
 

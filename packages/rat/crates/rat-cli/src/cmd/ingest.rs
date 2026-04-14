@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use aws_sdk_sqs::Client as SqsClient;
 use dialoguer::console::Style;
 use dialoguer::theme::ColorfulTheme;
-use dialoguer::{Confirm, Select};
+use dialoguer::{Confirm, Input, Select};
 
 use rat_cli::{aws, config};
 use rat_core::message::{Action, ChunkEntry, FileMessage, SourceType};
@@ -34,8 +34,6 @@ pub async fn handle(target: &str, force: bool, since: Option<&str>, profile_name
     let target_path = Path::new(target).canonicalize()?;
     let repo_root = git::discover_repo_root(&target_path)?;
 
-    let repo_url = git::remote_url(&repo_root)?
-        .unwrap_or_else(|| repo_root.display().to_string());
     let default_branch = git::default_branch(&repo_root)?;
     let current_branch = git::current_branch(&repo_root)?
         .unwrap_or_else(|| "HEAD".to_string());
@@ -46,6 +44,16 @@ pub async fn handle(target: &str, force: bool, since: Option<&str>, profile_name
         active_item_prefix: dialoguer::console::style("❯ ".to_string()).color256(183),
         inactive_item_prefix: dialoguer::console::style("  ".to_string()),
         ..ColorfulTheme::default()
+    };
+
+    let repo_id = match git::select_remote_url(&repo_root)? {
+        Some(url) => git::canonicalize_remote_url(&url),
+        None => {
+            eprintln!("No git remote found for this repository.");
+            Input::<String>::with_theme(&theme)
+                .with_prompt("Enter a repository ID")
+                .interact_text()?
+        }
     };
 
     // scope 선택 (서브디렉토리인 경우)
@@ -85,7 +93,7 @@ pub async fn handle(target: &str, force: bool, since: Option<&str>, profile_name
         eprintln!("Indexing will use the default branch '{}'.", default_branch);
     }
 
-    eprintln!("Repository : {}", repo_url);
+    eprintln!("Repository : {}", repo_id);
     eprintln!("Branch     : {} ({})", default_branch, &commit_id[..8]);
 
     let confirmed = Confirm::with_theme(&theme)
@@ -161,7 +169,7 @@ pub async fn handle(target: &str, force: bool, since: Option<&str>, profile_name
         eprintln!("Sending purge message...");
         let purge = FileMessage {
             action: Action::Purge,
-            repo_id: repo_url.clone(),
+            repo_id: repo_id.clone(),
             commit_id: commit_id.clone(),
             source_path: None,
             content: None,
@@ -175,7 +183,7 @@ pub async fn handle(target: &str, force: bool, since: Option<&str>, profile_name
         eprintln!("[delete] {}", file.display());
         let msg = FileMessage {
             action: Action::Delete,
-            repo_id: repo_url.clone(),
+            repo_id: repo_id.clone(),
             commit_id: commit_id.clone(),
             source_path: Some(file.display().to_string()),
             content: None,
@@ -223,7 +231,7 @@ pub async fn handle(target: &str, force: bool, since: Option<&str>, profile_name
 
         let msg = FileMessage {
             action: Action::Upsert,
-            repo_id: repo_url.clone(),
+            repo_id: repo_id.clone(),
             commit_id: commit_id.clone(),
             source_path: Some(file.display().to_string()),
             content: Some(content),

@@ -6,10 +6,17 @@ use rat_cli::aws;
 use rat_cli::config;
 
 #[derive(Serialize)]
+#[serde(tag = "action", rename_all = "snake_case")]
+enum ApiRequest<'a> {
+    Search(SearchRequest<'a>),
+}
+
+#[derive(Serialize)]
 struct SearchRequest<'a> {
     query: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
     repo_id: Option<&'a str>,
+    source_type: &'a str,
     limit: i64,
 }
 
@@ -36,6 +43,7 @@ struct SearchResult {
 pub async fn handle(
     query: &str,
     repo_id: Option<&str>,
+    source_type: &str,
     limit: i64,
     profile_name: Option<&str>,
 ) -> Result<()> {
@@ -49,16 +57,17 @@ pub async fn handle(
     let ssm = aws_sdk_ssm::Client::new(&aws_config);
     aws::resolve_ssm_values(profile_name, &mut profile, &ssm).await?;
 
-    anyhow::ensure!(!profile.search_function_arn.is_empty(), "search_function_arn not configured");
-    let function_arn = &profile.search_function_arn;
+    anyhow::ensure!(!profile.api_function_arn.is_empty(), "api_function_arn not configured");
+    let function_arn = &profile.api_function_arn;
 
     let lambda_client = aws_sdk_lambda::Client::new(&aws_config);
 
-    let request = SearchRequest {
+    let request = ApiRequest::Search(SearchRequest {
         query,
         repo_id,
+        source_type,
         limit,
-    };
+    });
     let payload = serde_json::to_vec(&request)?;
 
     let response = lambda_client
@@ -67,7 +76,7 @@ pub async fn handle(
         .payload(Blob::new(payload))
         .send()
         .await
-        .context("failed to invoke search Lambda")?;
+        .context("failed to invoke API Lambda")?;
 
     if let Some(err) = response.function_error() {
         let body = response

@@ -5,7 +5,7 @@ members = [
     "crates/rat-cli",
     "crates/rat-lambda",
     "crates/rat-migration",
-    "crates/rat-search",
+    "crates/rat-api",
 ]
 
 [workspace.package]

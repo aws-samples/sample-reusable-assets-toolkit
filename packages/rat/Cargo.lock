@@ -2733,6 +2733,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c8d0fd677905edcbeedbf2edb6494d676f0e98d54d5cf9bda0b061cb8fb8aba"
 
 [[package]]
+name = "rat-api"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "aws-config",
+ "aws-sdk-bedrockruntime",
+ "aws-sdk-secretsmanager",
+ "envy",
+ "lambda_runtime",
+ "pgvector",
+ "rat-core",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "rat-cli"
 version = "0.1.0"
 dependencies = [
@@ -2816,26 +2836,6 @@ dependencies = [
  "rat-core",
  "serde",
  "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "rat-search"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "aws-config",
- "aws-sdk-bedrockruntime",
- "aws-sdk-secretsmanager",
- "envy",
- "lambda_runtime",
- "pgvector",
- "rat-core",
- "serde",
- "serde_json",
- "sqlx",
  "tokio",
  "tracing",
  "tracing-subscriber",

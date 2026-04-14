@@ -1,25 +1,16 @@
 use std::collections::HashMap;
 
-use lambda_runtime::{service_fn, Error, LambdaEvent};
+use lambda_runtime::Error;
 use pgvector::Vector;
-use rat_core::{db, embedding};
+use rat_core::embedding;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use tracing::{error, info};
+use tracing::info;
+
+use crate::AppState;
 
 #[derive(Deserialize)]
-struct Config {
-    rds_proxy_endpoint: String,
-    db_secret_arn: String,
-}
-
-struct AppState {
-    pool: PgPool,
-    bedrock: aws_sdk_bedrockruntime::Client,
-}
-
-#[derive(Deserialize)]
-struct SearchRequest {
+pub struct SearchRequest {
     query: String,
     #[serde(default)]
     repo_id: Option<String>,
@@ -32,11 +23,11 @@ struct SearchRequest {
 }
 
 fn default_limit() -> i64 {
-    20
+    3
 }
 
 #[derive(Serialize)]
-struct SearchResponse {
+pub struct SearchResponse {
     results: Vec<SearchResult>,
 }
 
@@ -64,29 +55,10 @@ struct SearchResult {
 const RRF_K: f64 = 60.0;
 const SEARCH_POOL_SIZE: i64 = 50;
 
-async fn init() -> Result<AppState, Error> {
-    rat_core::logging::init_lambda_tracing();
-
-    info!("Initializing search Lambda");
-    let config: Config = envy::from_env()?;
-    let pool =
-        db::create_pool_from_secret(&config.db_secret_arn, &config.rds_proxy_endpoint).await?;
-
-    let bedrock_config = aws_config::defaults(aws_config::BehaviorVersion::latest())
-        .region(aws_config::Region::new("us-east-1"))
-        .load()
-        .await;
-    let bedrock = aws_sdk_bedrockruntime::Client::new(&bedrock_config);
-
-    info!("Search Lambda ready");
-    Ok(AppState { pool, bedrock })
-}
-
-async fn handler(
+pub async fn handle_search(
     state: &AppState,
-    event: LambdaEvent<SearchRequest>,
+    req: SearchRequest,
 ) -> Result<SearchResponse, Error> {
-    let req = event.payload;
     info!(query = %req.query, repo_id = ?req.repo_id, "Search request");
 
     let query_embedding = embedding::generate_embedding(&state.bedrock, &req.query, "GENERIC_RETRIEVAL").await?;
@@ -201,17 +173,4 @@ fn fuse_rrf(
     results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
     results.truncate(limit);
     results
-}
-
-#[tokio::main]
-async fn main() -> Result<(), Error> {
-    let state = match init().await {
-        Ok(s) => s,
-        Err(e) => {
-            error!(error = %e, "Failed to initialize");
-            return Err(e);
-        }
-    };
-
-    lambda_runtime::run(service_fn(|event| handler(&state, event))).await
 }

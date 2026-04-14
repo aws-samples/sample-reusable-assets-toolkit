@@ -134,6 +134,65 @@ pub fn remote_url(repo_root: &Path) -> anyhow::Result<Option<String>> {
     Ok(remote.ok().and_then(|r| r.url().map(|u| u.to_string())))
 }
 
+/// Selects a remote URL using the following rules:
+/// 1. Prefer the remote named `origin`.
+/// 2. Otherwise, use the sole remote if exactly one exists.
+/// 3. Otherwise, return `None`.
+pub fn select_remote_url(repo_root: &Path) -> anyhow::Result<Option<String>> {
+    let repo = Repository::open(repo_root)
+        .with_context(|| format!("failed to open git repository at {}", repo_root.display()))?;
+
+    if let Ok(remote) = repo.find_remote("origin") {
+        if let Some(url) = remote.url() {
+            return Ok(Some(url.to_string()));
+        }
+    }
+
+    let names = repo.remotes().context("failed to list remotes")?;
+    if names.len() == 1 {
+        if let Some(name) = names.get(0) {
+            if let Ok(remote) = repo.find_remote(name) {
+                return Ok(remote.url().map(|u| u.to_string()));
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+/// Canonicalizes a git remote URL to `host/owner/repo` form.
+/// Handles SSH (`git@host:owner/repo.git`), `ssh://`, and `https://` variants.
+pub fn canonicalize_remote_url(url: &str) -> String {
+    let trimmed = url.trim();
+    let without_git = trimmed.strip_suffix(".git").unwrap_or(trimmed);
+
+    if !without_git.contains("://") {
+        if let Some((authority, path)) = without_git.split_once(':') {
+            let host = authority
+                .rsplit_once('@')
+                .map(|(_, h)| h)
+                .unwrap_or(authority);
+            return format!(
+                "{}/{}",
+                host.to_lowercase(),
+                path.trim_start_matches('/').to_lowercase()
+            );
+        }
+    }
+
+    if let Some((_, rest)) = without_git.split_once("://") {
+        let (authority, path) = rest.split_once('/').unwrap_or((rest, ""));
+        let host = authority
+            .rsplit_once('@')
+            .map(|(_, h)| h)
+            .unwrap_or(authority);
+        let host = host.split_once(':').map(|(h, _)| h).unwrap_or(host);
+        return format!("{}/{}", host.to_lowercase(), path.to_lowercase());
+    }
+
+    without_git.to_lowercase()
+}
+
 /// Lists files from a specific branch's tree, optionally filtered by a subdirectory prefix.
 pub fn list_files_at_branch(
     repo_root: &Path,

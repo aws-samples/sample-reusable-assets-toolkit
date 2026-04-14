@@ -163,13 +163,13 @@ export class ApplicationStack extends Stack {
       stringValue: queue.queueUrl,
     });
 
-    // ─── Search Lambda ────────────────────────────────────────────────
-    const searchFn = new RustFunction(this, 'SearchFunction', {
+    // ─── API Lambda ───────────────────────────────────────────────────
+    const apiFn = new RustFunction(this, 'ApiFunction', {
       manifestPath: '../rat/Cargo.toml',
       binaryName: 'bootstrap',
       architecture: lambda.Architecture.ARM_64,
       bundling: {
-        cargoLambdaFlags: ['-p', 'rat-search'],
+        cargoLambdaFlags: ['-p', 'rat-api'],
       },
       memorySize: 512,
       timeout: Duration.seconds(30),
@@ -181,11 +181,11 @@ export class ApplicationStack extends Stack {
       },
     });
 
-    (searchFn.node.defaultChild as CfnResource).addMetadata('checkov', {
+    (apiFn.node.defaultChild as CfnResource).addMetadata('checkov', {
       skip: [
         {
           id: 'CKV_AWS_115',
-          comment: 'Search Lambda concurrency managed at caller level',
+          comment: 'API Lambda concurrency managed at caller level',
         },
         {
           id: 'CKV_AWS_116',
@@ -198,23 +198,23 @@ export class ApplicationStack extends Stack {
       ],
     });
 
-    dbSecret.grantRead(searchFn);
-    proxySg.connections.allowFrom(searchFn, ec2.Port.tcp(5432));
+    dbSecret.grantRead(apiFn);
+    proxySg.connections.allowFrom(apiFn, ec2.Port.tcp(5432));
 
-    searchFn.addToRolePolicy(
+    apiFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['bedrock:InvokeModel'],
         resources: ['*'],
       }),
     );
 
-    new StringParameter(this, 'SearchFunctionArnParam', {
-      parameterName: SSM_KEYS.SEARCH_FUNCTION_ARN,
-      stringValue: searchFn.functionArn,
+    new StringParameter(this, 'ApiFunctionArnParam', {
+      parameterName: SSM_KEYS.API_FUNCTION_ARN,
+      stringValue: apiFn.functionArn,
     });
 
     // ─── Cognito Authenticated Role Permissions ─────────────────────
-    searchFn.addPermission('AuthenticatedInvoke', {
+    apiFn.addPermission('AuthenticatedInvoke', {
       principal: new iam.ArnPrincipal(props.authenticatedRole.roleArn),
       action: 'lambda:InvokeFunction',
     });

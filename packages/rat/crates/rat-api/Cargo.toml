@@ -1,5 +1,5 @@
 [package]
-name = "rat-search"
+name = "rat-api"
 version.workspace = true
 edition.workspace = true
 

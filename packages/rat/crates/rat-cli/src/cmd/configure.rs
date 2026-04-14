@@ -62,8 +62,8 @@ fn show(profile_name: Option<&str>) -> Result<()> {
     if !profile.sqs_queue_url.is_empty() {
         println!("sqs_queue_url            = {}", profile.sqs_queue_url);
     }
-    if !profile.search_function_arn.is_empty() {
-        println!("search_function_arn      = {}", profile.search_function_arn);
+    if !profile.api_function_arn.is_empty() {
+        println!("api_function_arn         = {}", profile.api_function_arn);
     }
     Ok(())
 }
@@ -111,7 +111,7 @@ fn interactive(profile_name: Option<&str>) -> Result<()> {
         cognito_identity_pool_id,
         cognito_user_pool_id,
         sqs_queue_url: existing.as_ref().map_or(String::new(), |p| p.sqs_queue_url.clone()),
-        search_function_arn: existing.as_ref().map_or(String::new(), |p| p.search_function_arn.clone()),
+        api_function_arn: existing.as_ref().map_or(String::new(), |p| p.api_function_arn.clone()),
     };
 
     let mut cfg = config::load_config()?.unwrap_or_else(|| RatConfig {

@@ -49,6 +49,20 @@ enum Cli {
         #[arg(long)]
         profile: Option<String>,
     },
+    /// List indexed repositories
+    List {
+        /// Profile name (default: "default")
+        #[arg(long)]
+        profile: Option<String>,
+    },
+    /// Purge all indexed data for a repository
+    Purge {
+        /// Repository ID to purge
+        repo_id: String,
+        /// Profile name (default: "default")
+        #[arg(long)]
+        profile: Option<String>,
+    },
     /// Search code snippets
     Search {
         /// Search query
@@ -56,8 +70,11 @@ enum Cli {
         /// Filter by repository ID
         #[arg(long)]
         repo_id: Option<String>,
+        /// Filter by source type (code, doc)
+        #[arg(long, default_value = "code")]
+        source_type: String,
         /// Maximum number of results
-        #[arg(long, default_value = "20")]
+        #[arg(long, default_value = "3")]
         limit: i64,
         /// Profile name (default: "default")
         #[arg(long)]
@@ -88,8 +105,14 @@ async fn main() -> anyhow::Result<()> {
         Cli::Logout { profile } => {
             cmd::login::logout(profile.as_deref())?;
         }
-        Cli::Search { query, repo_id, limit, profile } => {
-            cmd::search::handle(&query, repo_id.as_deref(), limit, profile.as_deref()).await?;
+        Cli::List { profile } => {
+            cmd::list::handle(profile.as_deref()).await?;
+        }
+        Cli::Purge { repo_id, profile } => {
+            cmd::purge::handle(&repo_id, profile.as_deref()).await?;
+        }
+        Cli::Search { query, repo_id, source_type, limit, profile } => {
+            cmd::search::handle(&query, repo_id.as_deref(), &source_type, limit, profile.as_deref()).await?;
         }
     }
 
