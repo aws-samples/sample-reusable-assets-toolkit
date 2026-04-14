@@ -2,7 +2,6 @@ CREATE TABLE files (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     repo_id TEXT NOT NULL,
     source_path TEXT NOT NULL,
-    commit_id TEXT NOT NULL,
     content TEXT NOT NULL,
     language TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()

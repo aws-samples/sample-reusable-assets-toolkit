@@ -21,6 +21,8 @@ pub struct Profile {
     pub sqs_queue_url: String,
     #[serde(default)]
     pub api_function_arn: String,
+    #[serde(default)]
+    pub migration_function_arn: String,
 }
 
 /// Top-level config stored in `~/.config/rat/config.toml`.

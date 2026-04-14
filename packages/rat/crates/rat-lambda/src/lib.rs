@@ -17,7 +17,6 @@ pub fn language_from_path(path: &str) -> Option<&str> {
 pub struct FileRecord<'a> {
     pub repo_id: &'a str,
     pub source_path: &'a str,
-    pub commit_id: &'a str,
     pub content: &'a str,
     pub language: Option<&'a str>,
 }
@@ -37,7 +36,6 @@ pub fn build_file_record(msg: &FileMessage) -> Result<FileRecord<'_>, &'static s
     Ok(FileRecord {
         repo_id: &msg.repo_id,
         source_path,
-        commit_id: &msg.commit_id,
         content,
         language,
     })

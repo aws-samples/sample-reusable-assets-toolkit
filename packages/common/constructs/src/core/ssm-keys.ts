@@ -11,4 +11,5 @@ export const SSM_KEYS = {
   COGNITO_IDENTITY_POOL_ID: '/idp-code/cognito/identity-pool-id',
   COGNITO_USER_POOL_ID: '/idp-code/cognito/user-pool-id',
   API_FUNCTION_ARN: '/idp-code/api/function-arn',
+  MIGRATION_FUNCTION_ARN: '/idp-code/migration/function-arn',
 } as const;

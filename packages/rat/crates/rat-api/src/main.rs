@@ -23,6 +23,7 @@ enum ApiRequest {
     Search(actions::search::SearchRequest),
     List(actions::list::ListRequest),
     Purge(actions::purge::PurgeRequest),
+    RepoCreate(actions::repo_create::RepoCreateRequest),
 }
 
 #[derive(Serialize)]
@@ -31,6 +32,7 @@ enum ApiResponse {
     Search(actions::search::SearchResponse),
     List(actions::list::ListResponse),
     Purge(actions::purge::PurgeResponse),
+    RepoCreate(actions::repo_create::RepoCreateResponse),
 }
 
 async fn init() -> Result<AppState, Error> {
@@ -59,6 +61,7 @@ async fn handler(
         ApiRequest::Search(req) => actions::search::handle_search(state, req).await.map(ApiResponse::Search),
         ApiRequest::List(req) => actions::list::handle_list(state, req).await.map(ApiResponse::List),
         ApiRequest::Purge(req) => actions::purge::handle_purge(state, req).await.map(ApiResponse::Purge),
+        ApiRequest::RepoCreate(req) => actions::repo_create::handle_repo_create(state, req).await.map(ApiResponse::RepoCreate),
     }
 }
 

@@ -77,7 +77,6 @@ fn test_upsert_records() {
     println!("=== File Record ===");
     println!("repo_id:     {}", file_rec.repo_id);
     println!("source_path: {}", file_rec.source_path);
-    println!("commit_id:   {}", file_rec.commit_id);
     println!("language:    {:?}", file_rec.language);
     println!("content:     ({} bytes)", file_rec.content.len());
 
@@ -120,7 +119,6 @@ fn test_markdown_upsert_records() {
     println!("=== File Record (markdown) ===");
     println!("repo_id:     {}", file_rec.repo_id);
     println!("source_path: {}", file_rec.source_path);
-    println!("commit_id:   {}", file_rec.commit_id);
     println!("language:    {:?}", file_rec.language);
     assert_eq!(file_rec.language, Some("markdown"));
 

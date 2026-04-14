@@ -73,6 +73,15 @@ enum Cli {
         #[arg(long)]
         profile: Option<String>,
     },
+    /// Run database migrations via the migration Lambda
+    Migration {
+        /// Drop all tables and re-run migrations from scratch (DESTRUCTIVE)
+        #[arg(long)]
+        reset: bool,
+        /// Profile name (default: "default")
+        #[arg(long)]
+        profile: Option<String>,
+    },
     /// Search code snippets
     Search {
         /// Search query
@@ -123,6 +132,9 @@ async fn main() -> anyhow::Result<()> {
         }
         Cli::Mcp { profile } => {
             cmd::mcp::handle(profile.as_deref()).await?;
+        }
+        Cli::Migration { reset, profile } => {
+            cmd::migration::handle(reset, profile.as_deref()).await?;
         }
         Cli::Search { query, repo_id, source_type, limit, profile } => {
             cmd::search::handle(&query, repo_id.as_deref(), &source_type, limit, profile.as_deref()).await?;

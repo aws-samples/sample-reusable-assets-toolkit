@@ -7,6 +7,7 @@ use crate::config::{self, Profile, TokenSet};
 
 const SSM_INGEST_QUEUE_URL: &str = "/idp-code/ingest/queue-url";
 const SSM_API_FUNCTION_ARN: &str = "/idp-code/api/function-arn";
+const SSM_MIGRATION_FUNCTION_ARN: &str = "/idp-code/migration/function-arn";
 
 /// Cognito Identity Pool의 id_token으로 AWS credentials를 얻어 SdkConfig를 반환한다.
 pub async fn load_aws_config(profile: &Profile, token: &TokenSet) -> Result<aws_config::SdkConfig> {
@@ -83,6 +84,12 @@ pub async fn resolve_ssm_values(
 
     if profile.api_function_arn.is_empty() {
         profile.api_function_arn = get_ssm_parameter(ssm, SSM_API_FUNCTION_ARN).await?;
+        updated = true;
+    }
+
+    if profile.migration_function_arn.is_empty() {
+        profile.migration_function_arn =
+            get_ssm_parameter(ssm, SSM_MIGRATION_FUNCTION_ARN).await?;
         updated = true;
     }
 

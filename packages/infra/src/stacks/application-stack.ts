@@ -81,6 +81,16 @@ export class ApplicationStack extends Stack {
 
     proxySg.connections.allowFrom(migrationFn, ec2.Port.tcp(5432));
 
+    new StringParameter(this, 'MigrationFunctionArnParam', {
+      parameterName: SSM_KEYS.MIGRATION_FUNCTION_ARN,
+      stringValue: migrationFn.functionArn,
+    });
+
+    migrationFn.addPermission('AuthenticatedInvoke', {
+      principal: new iam.ArnPrincipal(props.authenticatedRole.roleArn),
+      action: 'lambda:InvokeFunction',
+    });
+
     // ─── Dead Letter Queue ──────────────────────────────────────────────
     const dlq = new sqs.Queue(this, 'IngestDlq', {
       retentionPeriod: Duration.days(14),

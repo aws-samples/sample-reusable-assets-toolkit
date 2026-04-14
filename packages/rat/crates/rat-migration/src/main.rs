@@ -3,7 +3,7 @@ use lambda_runtime::{service_fn, Error, LambdaEvent};
 use rat_core::db;
 use rat_core::rds_secret::RdsSecret;
 use serde::Deserialize;
-use tracing::info;
+use tracing::{info, warn};
 
 #[derive(Deserialize)]
 struct Config {
@@ -11,7 +11,14 @@ struct Config {
     rds_proxy_endpoint: String,
 }
 
-async fn handler(_event: LambdaEvent<serde_json::Value>) -> Result<serde_json::Value, Error> {
+#[derive(Deserialize, Default)]
+struct Payload {
+    #[serde(default)]
+    reset: bool,
+}
+
+async fn handler(event: LambdaEvent<serde_json::Value>) -> Result<serde_json::Value, Error> {
+    let payload: Payload = serde_json::from_value(event.payload).unwrap_or_default();
     let config: Config = envy::from_env()?;
 
     let aws_config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
@@ -22,12 +29,26 @@ async fn handler(_event: LambdaEvent<serde_json::Value>) -> Result<serde_json::V
     info!(host = %config.rds_proxy_endpoint, db = %rds_secret.dbname, "Connecting via RDS Proxy");
 
     let pool = db::create_pool(&conn_str).await?;
+
+    if payload.reset {
+        warn!("RESET requested — dropping existing schema");
+        sqlx::query(
+            "DROP TABLE IF EXISTS snippets, files, repos, _sqlx_migrations CASCADE",
+        )
+        .execute(&pool)
+        .await?;
+        sqlx::query("DROP EXTENSION IF EXISTS vector")
+            .execute(&pool)
+            .await?;
+        warn!("Schema reset complete");
+    }
+
     db::run_migrations(&pool).await?;
 
     pool.close().await;
     info!("Migration completed successfully");
 
-    Ok(serde_json::json!({ "status": "ok" }))
+    Ok(serde_json::json!({ "status": "ok", "reset": payload.reset }))
 }
 
 #[tokio::main]

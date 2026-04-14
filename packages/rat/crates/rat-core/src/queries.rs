@@ -56,22 +56,19 @@ pub async fn upsert_file<'e, E: PgExecutor<'e>>(
     executor: E,
     repo_id: &str,
     source_path: &str,
-    commit_id: &str,
     content: &str,
     language: Option<&str>,
 ) -> Result<i64, sqlx::Error> {
     sqlx::query_scalar(
-        "INSERT INTO files (repo_id, source_path, commit_id, content, language)
-         VALUES ($1, $2, $3, $4, $5)
+        "INSERT INTO files (repo_id, source_path, content, language)
+         VALUES ($1, $2, $3, $4)
          ON CONFLICT (repo_id, source_path) DO UPDATE
-         SET commit_id = EXCLUDED.commit_id,
-             content = EXCLUDED.content,
+         SET content = EXCLUDED.content,
              language = EXCLUDED.language
          RETURNING id",
     )
     .bind(repo_id)
     .bind(source_path)
-    .bind(commit_id)
     .bind(content)
     .bind(language)
     .fetch_one(executor)

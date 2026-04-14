@@ -112,6 +112,7 @@ fn interactive(profile_name: Option<&str>) -> Result<()> {
         cognito_user_pool_id,
         sqs_queue_url: existing.as_ref().map_or(String::new(), |p| p.sqs_queue_url.clone()),
         api_function_arn: existing.as_ref().map_or(String::new(), |p| p.api_function_arn.clone()),
+        migration_function_arn: existing.as_ref().map_or(String::new(), |p| p.migration_function_arn.clone()),
     };
 
     let mut cfg = config::load_config()?.unwrap_or_else(|| RatConfig {

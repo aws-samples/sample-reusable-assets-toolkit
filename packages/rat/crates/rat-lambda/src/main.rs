@@ -90,7 +90,6 @@ async fn handle_upsert(state: &AppState, msg: &FileMessage) -> Result<(), Error>
         &mut *tx,
         file_rec.repo_id,
         file_rec.source_path,
-        file_rec.commit_id,
         file_rec.content,
         file_rec.language,
     )
