@@ -3,7 +3,7 @@ mod cmd;
 use clap::Parser;
 
 #[derive(Parser)]
-#[command(name = "rat", about = "Reusable Asset Toolkit")]
+#[command(name = "rat", version, about = "Reusable Asset Toolkit")]
 enum Cli {
     /// Configure server endpoint and credentials
     Configure {
@@ -33,7 +33,11 @@ enum Cli {
         file: String,
     },
     /// Check indexing status
-    Status,
+    Status {
+        /// Profile name (default: "default")
+        #[arg(long)]
+        profile: Option<String>,
+    },
     /// Authenticate with Cognito (browser-based OIDC PKCE)
     Login {
         /// Show current token status instead of logging in
@@ -96,8 +100,8 @@ async fn main() -> anyhow::Result<()> {
         Cli::Chunk { file } => {
             cmd::chunk::handle(&file)?;
         }
-        Cli::Status => {
-            cmd::status::handle()?;
+        Cli::Status { profile } => {
+            cmd::status::handle(profile.as_deref()).await?;
         }
         Cli::Login { status, profile } => {
             cmd::login::handle(profile.as_deref(), status).await?;

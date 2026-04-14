@@ -16,8 +16,6 @@ pub struct SearchRequest {
     repo_id: Option<String>,
     #[serde(default)]
     source_type: Option<String>,
-    #[serde(default)]
-    tags: Option<Vec<String>>,
     #[serde(default = "default_limit")]
     limit: i64,
 }
@@ -95,15 +93,13 @@ async fn full_text_search(
         WHERE s.search_vector @@ websearch_to_tsquery('english', $1)
           AND ($2::text IS NULL OR s.repo_id = $2)
           AND ($3::text IS NULL OR s.source_type = $3)
-          AND ($4::text[] IS NULL OR s.tags && $4)
         ORDER BY ts_rank(s.search_vector, websearch_to_tsquery('english', $1)) DESC
-        LIMIT $5
+        LIMIT $4
         "#,
     )
     .bind(&req.query)
     .bind(&req.repo_id)
     .bind(&req.source_type)
-    .bind(&req.tags)
     .bind(SEARCH_POOL_SIZE)
     .fetch_all(pool)
     .await?;
@@ -126,14 +122,12 @@ async fn vector_search(
         JOIN files f ON f.id = s.file_id
         WHERE ($1::text IS NULL OR s.repo_id = $1)
           AND ($2::text IS NULL OR s.source_type = $2)
-          AND ($3::text[] IS NULL OR s.tags && $3)
-        ORDER BY s.embedding <=> $4
-        LIMIT $5
+        ORDER BY s.embedding <=> $3
+        LIMIT $4
         "#,
     )
     .bind(&req.repo_id)
     .bind(&req.source_type)
-    .bind(&req.tags)
     .bind(embedding)
     .bind(SEARCH_POOL_SIZE)
     .fetch_all(pool)

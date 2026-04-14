@@ -1,24 +1,58 @@
+use std::fmt::Write;
+
 use aws_sdk_bedrockruntime::types::{ContentBlock, ConversationRole, Message, SystemContentBlock};
 use aws_sdk_bedrockruntime::Client;
 use tracing::info;
 
+pub struct SummaryContext<'a> {
+    pub source_path: &'a str,
+    pub language: Option<&'a str>,
+    pub source_type: &'a str,
+}
+
 const SYSTEM_PROMPT: &str = "\
-You are a code summarizer. Given a code snippet, produce a concise English description \
-that captures what the code does, its key identifiers, and its purpose. \
-The description will be used for full-text search indexing, so include relevant \
-technical terms and keywords. Keep it under 200 words. Output only the description.";
+You are a code summarizer. Given a code snippet, output a description in EXACTLY the \
+following plain-text format, with no markdown, no code fences, no extra lines, and no \
+preamble:\n\
+\n\
+SUMMARY: <one sentence, 15-25 words, present tense, describing what the code does>\n\
+IDENTIFIERS: <comma-separated function, type, method, and module names defined or \
+directly referenced; lowercase preserved as in source; omit language keywords>\n\
+KEYWORDS: <comma-separated technical terms, libraries, domain concepts, and operations \
+present in the code; lowercase; 5-15 items>\n\
+\n\
+Rules:\n\
+- Output all three lines, in this exact order, with the exact labels shown.\n\
+- Do not speculate about use cases or intent that are not evident in the code.\n\
+- Do not mention that the input is a snippet or that you are summarizing.\n\
+- Do not wrap output in quotes or backticks.";
 
 pub async fn generate_summary(
     client: &Client,
     model_id: &str,
     content: &str,
+    ctx: &SummaryContext<'_>,
 ) -> Result<String, aws_sdk_bedrockruntime::Error> {
     let trimmed = content.trim();
     if trimmed.is_empty() {
         return Ok(String::new());
     }
 
-    info!(content_len = trimmed.len(), model_id, "Generating summary");
+    info!(
+        content_len = trimmed.len(),
+        model_id,
+        source_path = ctx.source_path,
+        "Generating summary"
+    );
+
+    let mut user_message = String::new();
+    let _ = writeln!(user_message, "File: {}", ctx.source_path);
+    if let Some(lang) = ctx.language {
+        let _ = writeln!(user_message, "Language: {}", lang);
+    }
+    let _ = writeln!(user_message, "Type: {}", ctx.source_type);
+    user_message.push_str("\n---\n");
+    user_message.push_str(trimmed);
 
     let response = client
         .converse()
@@ -27,7 +61,7 @@ pub async fn generate_summary(
         .messages(
             Message::builder()
                 .role(ConversationRole::User)
-                .content(ContentBlock::Text(trimmed.to_string()))
+                .content(ContentBlock::Text(user_message))
                 .build()
                 .unwrap(),
         )

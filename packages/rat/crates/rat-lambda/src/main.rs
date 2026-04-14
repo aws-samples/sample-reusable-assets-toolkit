@@ -2,7 +2,7 @@ use aws_lambda_events::sqs::SqsEvent;
 use aws_sdk_bedrockruntime::Client as BedrockClient;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use pgvector::Vector;
-use rat_core::{db, embedding, summary};
+use rat_core::{db, embedding, summary, summary::SummaryContext};
 use rat_lambda::{build_file_record, build_snippet_records, Action, FileMessage};
 use serde::Deserialize;
 use sqlx::PgPool;
@@ -107,10 +107,19 @@ async fn handle_upsert(state: &AppState, msg: &FileMessage) -> Result<(), Error>
     info!(file_id, chunks = snippet_recs.len(), "Inserting snippets");
 
     for rec in &snippet_recs {
-        let description =
-            summary::generate_summary(&state.bedrock, &state.summary_model_id, rec.content)
-                .await
-                .map_err(|e| format!("summary error: {e}"))?;
+        let ctx = SummaryContext {
+            source_path: file_rec.source_path,
+            language: file_rec.language,
+            source_type: rec.source_type,
+        };
+        let description = summary::generate_summary(
+            &state.bedrock,
+            &state.summary_model_id,
+            rec.content,
+            &ctx,
+        )
+        .await
+        .map_err(|e| format!("summary error: {e}"))?;
 
         let emb = embedding::generate_embedding(&state.bedrock, &description, "GENERIC_INDEX")
             .await

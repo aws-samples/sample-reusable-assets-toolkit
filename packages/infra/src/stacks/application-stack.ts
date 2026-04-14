@@ -163,6 +163,13 @@ export class ApplicationStack extends Stack {
       stringValue: queue.queueUrl,
     });
 
+    props.authenticatedRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ['sqs:GetQueueAttributes'],
+        resources: [`arn:aws:sqs:${this.region}:${this.account}:*Ingest*`],
+      }),
+    );
+
     // ─── API Lambda ───────────────────────────────────────────────────
     const apiFn = new RustFunction(this, 'ApiFunction', {
       manifestPath: '../rat/Cargo.toml',
