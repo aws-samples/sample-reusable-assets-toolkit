@@ -1,22 +1,9 @@
 use lambda_runtime::Error;
+use rat_core::api::{PurgeRequest, PurgeResponse};
 use rat_core::queries;
-use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::AppState;
-
-#[derive(Deserialize)]
-pub struct PurgeRequest {
-    repo_id: String,
-}
-
-#[derive(Serialize)]
-pub struct PurgeResponse {
-    repo_id: String,
-    found: bool,
-    deleted_files: i64,
-    deleted_snippets: i64,
-}
 
 pub async fn handle_purge(state: &AppState, req: PurgeRequest) -> Result<PurgeResponse, Error> {
     warn!(repo_id = %req.repo_id, "Purge repo request");

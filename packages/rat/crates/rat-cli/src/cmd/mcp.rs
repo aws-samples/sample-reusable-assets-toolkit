@@ -78,22 +78,23 @@ impl RatMcpServer {
         let contents = results
             .iter()
             .map(|r| {
+                let s = &r.snippet;
                 let mut header = format!(
                     "─── [{}] {} (score: {:.4}) ───\n  repo: {}  type: {}",
-                    r.id, r.source_path, r.score, r.repo_id, r.source_type
+                    s.id, s.source_path, r.score, s.repo_id, s.source_type
                 );
-                if let Some(symbol) = &r.symbol_name {
+                if let Some(symbol) = &s.symbol_name {
                     header.push_str(&format!("  symbol: {symbol}"));
                 }
-                if let (Some(start), Some(end)) = (r.start_line, r.end_line) {
+                if let (Some(start), Some(end)) = (s.start_line, s.end_line) {
                     header.push_str(&format!("  lines: {start}-{end}"));
                 }
-                if let Some(lang) = &r.language {
+                if let Some(lang) = &s.language {
                     header.push_str(&format!("  lang: {lang}"));
                 }
                 Content::text(format!(
                     "{header}\n  {}\n\n{}\n",
-                    r.description, r.content
+                    s.description, s.content
                 ))
             })
             .collect();
@@ -122,10 +123,14 @@ impl RatMcpServer {
             "REPO_ID", "BRANCH", "COMMIT", "FILES", "SNIPPETS"
         );
         for repo in &repos {
-            let short_commit = &repo.indexed_commit_id[..8.min(repo.indexed_commit_id.len())];
+            let commit = repo
+                .indexed_commit_id
+                .as_deref()
+                .map(rat_cli::git::short_commit)
+                .unwrap_or("-");
             text.push_str(&format!(
                 "{:<60}  {:<20}  {:<10}  {:>10}  {:>12}\n",
-                repo.repo_id, repo.branch, short_commit, repo.file_count, repo.snippet_count
+                repo.repo_id, repo.branch, commit, repo.file_count, repo.snippet_count
             ));
         }
 

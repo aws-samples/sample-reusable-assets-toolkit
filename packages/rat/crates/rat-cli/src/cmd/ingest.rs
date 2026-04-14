@@ -1,38 +1,60 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Result};
 use aws_sdk_sqs::Client as SqsClient;
 use dialoguer::console::Style;
 use dialoguer::theme::ColorfulTheme;
-use dialoguer::{Confirm, Input, Select};
+use dialoguer::{Input, Select};
 
-use rat_cli::{aws, config};
+use rat_cli::git::short_commit;
+use rat_cli::session::CliSession;
+use rat_cli::{api_client, chunk, git, ratignore, sqs as sqs_helper};
 use rat_core::message::{Action, ChunkEntry, FileMessage, SourceType};
-use rat_cli::{chunk, git, ratignore};
+use rat_core::queries::RepoRow;
 
-fn source_type_for(path: &Path) -> SourceType {
-    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-    if ext == "md" {
-        SourceType::Doc
-    } else {
-        SourceType::Code
+// ── Repo state classification (pure) ────────────────────────────
+
+enum RepoState<'a> {
+    /// Repo row not yet created.
+    NotIndexed,
+    /// Row exists but `indexed_commit_id` is NULL (previous run interrupted).
+    Interrupted(&'a RepoRow),
+    /// Already indexed at the current commit.
+    AlreadyIndexed(&'a RepoRow),
+    /// Indexed at a different commit — can be updated incrementally.
+    OutOfDate(&'a RepoRow),
+}
+
+impl<'a> RepoState<'a> {
+    fn classify(existing: Option<&'a RepoRow>, commit_id: &str) -> Self {
+        match existing {
+            None => Self::NotIndexed,
+            Some(info) if info.indexed_commit_id.is_none() => Self::Interrupted(info),
+            Some(info) if info.indexed_commit_id.as_deref() == Some(commit_id) => {
+                Self::AlreadyIndexed(info)
+            }
+            Some(info) => Self::OutOfDate(info),
+        }
     }
 }
 
-async fn send_message(sqs: &SqsClient, queue_url: &str, msg: &FileMessage) -> Result<()> {
-    let body = serde_json::to_string(msg)?;
-    sqs.send_message()
-        .queue_url(queue_url)
-        .message_body(body)
-        .send()
-        .await
-        .context("failed to send SQS message")?;
-    Ok(())
+enum IngestMode {
+    Full,
+    Incremental { since: String },
 }
 
-pub async fn handle(target: &str, force: bool, since: Option<&str>, profile_name: Option<&str>) -> Result<()> {
+// ── Main handler ────────────────────────────────────────────────
+
+pub async fn handle(target: &str, force: bool, profile_name: Option<&str>) -> Result<()> {
     let target_path = Path::new(target).canonicalize()?;
     let repo_root = git::discover_repo_root(&target_path)?;
+
+    if target_path != repo_root {
+        bail!(
+            "ingest must run from the repository root: {}",
+            repo_root.display()
+        );
+    }
 
     let default_branch = git::default_branch(&repo_root)?;
     let current_branch = git::current_branch(&repo_root)?
@@ -56,97 +78,49 @@ pub async fn handle(target: &str, force: bool, since: Option<&str>, profile_name
         }
     };
 
-    // scope 선택 (서브디렉토리인 경우)
-    let prefix = if target_path != repo_root {
-        let rel = target_path.strip_prefix(&repo_root)?;
-        eprintln!(
-            "Warning: '{}' is not the repository root (root: {})",
-            target_path.display(),
-            repo_root.display()
-        );
-
-        let items = vec![
-            format!("Current folder only ({})", rel.display()),
-            format!("Entire repository ({})", repo_root.display()),
-        ];
-
-        let selection = Select::with_theme(&theme)
-            .with_prompt("Select scope")
-            .items(&items)
-            .default(0)
-            .interact()?;
-
-        match selection {
-            0 => Some(rel.to_path_buf()),
-            _ => None,
-        }
-    } else {
-        None
-    };
-
-    // 기본 브랜치 확인
     if current_branch != default_branch {
         eprintln!(
-            "Current branch '{}' differs from default branch '{}'.",
-            current_branch, default_branch
+            "Note: indexing default branch '{}', not current '{}'.",
+            default_branch, current_branch
         );
-        eprintln!("Indexing will use the default branch '{}'.", default_branch);
     }
 
     eprintln!("Repository : {}", repo_id);
-    eprintln!("Branch     : {} ({})", default_branch, &commit_id[..8]);
+    eprintln!("Branch     : {} ({})", default_branch, short_commit(&commit_id));
 
-    let confirmed = Confirm::with_theme(&theme)
-        .with_prompt("Proceed with indexing?")
-        .default(true)
-        .interact()?;
+    // 설정 로드 및 AWS 클라이언트 초기화
+    let session = CliSession::init(profile_name).await?;
+    let sqs = SqsClient::new(&session.aws_config);
+    let lambda = aws_sdk_lambda::Client::new(&session.aws_config);
+    let profile = &session.profile;
 
-    if !confirmed {
-        eprintln!("Aborted.");
-        return Ok(());
-    }
+    // repo 상태 조회 → 분류 → 프롬프트로 mode 확정
+    eprintln!("Checking repository state...");
+    let existing = api_client::fetch_repo(&lambda, &profile.api_function_arn, &repo_id).await?;
+    let state = RepoState::classify(existing.as_ref(), &commit_id);
 
-    // AWS 설정 및 SQS 클라이언트 초기화
-    let cfg = config::load_config()?.context("No configuration found. Run `rat configure` first.")?;
-    let mut profile = config::resolve_profile(&cfg, profile_name).context("Profile not found")?;
-    let token = config::load_valid_token(&profile, profile_name).await?
-        .context("Not logged in. Run `rat login` first.")?;
+    let mode = match prompt_mode(&theme, &state, &commit_id, force)? {
+        Some(m) => m,
+        None => {
+            eprintln!("Aborted.");
+            return Ok(());
+        }
+    };
 
-    let aws_config = aws::load_aws_config(&profile, &token).await?;
-    let ssm = aws_sdk_ssm::Client::new(&aws_config);
-    aws::resolve_ssm_values(profile_name, &mut profile, &ssm).await?;
-
-    anyhow::ensure!(!profile.sqs_queue_url.is_empty(), "sqs_queue_url not configured");
-    let queue_url = &profile.sqs_queue_url;
-    let sqs = SqsClient::new(&aws_config);
-
-    let extra_dirs: Vec<PathBuf> = prefix
-        .as_ref()
-        .map(|p| vec![repo_root.join(p)])
-        .unwrap_or_default();
-    let extra_refs: Vec<&Path> = extra_dirs.iter().map(|p| p.as_ref()).collect();
-    let ignore = ratignore::load(&repo_root, &extra_refs);
-
-    // since가 있으면 diff 기반, 없으면 전체 파일 목록
-    let (target_files, deleted_files): (Vec<PathBuf>, Vec<PathBuf>) = match since {
-        Some(prev_commit) => {
+    // 파일 목록 결정
+    let ignore = ratignore::load(&repo_root, &[]);
+    let (target_files, deleted_files): (Vec<PathBuf>, Vec<PathBuf>) = match &mode {
+        IngestMode::Incremental { since } => {
             eprintln!(
                 "Incremental : from {} to {}",
-                &prev_commit[..8.min(prev_commit.len())],
-                &commit_id[..8]
+                short_commit(since),
+                short_commit(&commit_id)
             );
-            let diff = git::diff_between_commits(&repo_root, prev_commit, &commit_id)?;
-            let filter_by_prefix = |p: &PathBuf| match prefix.as_ref() {
-                Some(pre) => p.starts_with(pre),
-                None => true,
-            };
-            let changed: Vec<_> = diff.changed.into_iter().filter(filter_by_prefix).collect();
-            let deleted: Vec<_> = diff.deleted.into_iter().filter(filter_by_prefix).collect();
-            (changed, deleted)
+            let diff = git::diff_between_commits(&repo_root, since, &commit_id)?;
+            (diff.changed, diff.deleted)
         }
-        None => {
-            let files =
-                git::list_files_at_branch(&repo_root, &default_branch, prefix.as_deref())?;
+        IngestMode::Full => {
+            let files = git::list_files_at_branch(&repo_root, &default_branch, None)?;
             (files, Vec::new())
         }
     };
@@ -164,34 +138,166 @@ pub async fn handle(target: &str, force: bool, since: Option<&str>, profile_name
         deleted_files.len()
     );
 
-    // force: 레포 전체 삭제 메시지 먼저 전송
-    if force {
-        eprintln!("Sending purge message...");
-        let purge = FileMessage {
-            action: Action::Purge,
-            repo_id: repo_id.clone(),
-            branch: default_branch.clone(),
-            commit_id: commit_id.clone(),
-            source_path: None,
-            content: None,
-            chunks: Vec::new(),
-        };
-        send_message(&sqs, queue_url, &purge).await?;
+    // 신규 repo인 경우에만 사전 row 생성 (commit_id는 NULL — 완료 후 갱신)
+    if existing.is_none() {
+        eprintln!("Registering repo...");
+        api_client::upsert_repo(
+            &lambda,
+            &profile.api_function_arn,
+            &repo_id,
+            &default_branch,
+            None,
+        )
+        .await?;
     }
 
-    // 삭제 메시지 전송
-    for file in &deleted_files {
+    // 파일 메시지 전송 (Ctrl-C 감지)
+    let send_result = tokio::select! {
+        r = send_all_messages(
+            &sqs,
+            &profile.sqs_queue_url,
+            &repo_id,
+            &repo_root,
+            &deleted_files,
+            &supported,
+        ) => r,
+        _ = tokio::signal::ctrl_c() => {
+            eprintln!();
+            Err(anyhow::anyhow!("interrupted by user"))
+        }
+    };
+
+    if let Err(e) = send_result {
+        eprintln!();
+        eprintln!("⚠ Ingest did not complete: {e}");
+        if existing.is_none() {
+            eprintln!("  Repository row was created but indexed_commit_id remains unset.");
+            eprintln!("  Re-run `rat ingest` to retry (it will start from scratch).");
+        } else {
+            eprintln!("  Re-run `rat ingest --force` to fully re-index.");
+        }
+        return Err(e);
+    }
+
+    // 전송 완료 → indexed_commit_id 갱신
+    eprintln!("Finalizing repo state at {}...", short_commit(&commit_id));
+    api_client::upsert_repo(
+        &lambda,
+        &profile.api_function_arn,
+        &repo_id,
+        &default_branch,
+        Some(&commit_id),
+    )
+    .await?;
+
+    Ok(())
+}
+
+/// Yes/No 프롬프트. `default_yes`로 어느 쪽이 안전 기본값인지 지정.
+fn confirm(theme: &ColorfulTheme, prompt: impl Into<String>, default_yes: bool) -> Result<bool> {
+    let items: &[&str] = if default_yes {
+        &["Yes", "No"]
+    } else {
+        &["No", "Yes"]
+    };
+    let selection = Select::with_theme(theme)
+        .with_prompt(prompt.into())
+        .items(items)
+        .default(0)
+        .interact()?;
+    Ok(if default_yes {
+        selection == 0
+    } else {
+        selection == 1
+    })
+}
+
+fn prompt_mode(
+    theme: &ColorfulTheme,
+    state: &RepoState<'_>,
+    commit_id: &str,
+    force: bool,
+) -> Result<Option<IngestMode>> {
+    match (state, force) {
+        (RepoState::NotIndexed, _) => {
+            eprintln!("Repository not indexed yet.");
+            let ok = confirm(theme, "Create and ingest entire repository?", true)?;
+            Ok(ok.then_some(IngestMode::Full))
+        }
+        (
+            RepoState::Interrupted(info)
+            | RepoState::AlreadyIndexed(info)
+            | RepoState::OutOfDate(info),
+            true,
+        ) => {
+            eprintln!(
+                "Existing repo at {} ({} files, {} snippets).",
+                info.indexed_commit_id
+                    .as_deref()
+                    .map(short_commit)
+                    .unwrap_or("-"),
+                info.file_count,
+                info.snippet_count
+            );
+            let ok = confirm(theme, "Force re-index every file. Continue?", false)?;
+            Ok(ok.then_some(IngestMode::Full))
+        }
+        (RepoState::Interrupted(_), false) => {
+            eprintln!(
+                "Repository row exists but was not finalized (previous ingest interrupted)."
+            );
+            let ok = confirm(theme, "Re-index entire repository?", true)?;
+            Ok(ok.then_some(IngestMode::Full))
+        }
+        (RepoState::AlreadyIndexed(info), false) => {
+            eprintln!(
+                "Already indexed at commit {} ({} files, {} snippets).",
+                short_commit(commit_id),
+                info.file_count,
+                info.snippet_count
+            );
+            let ok = confirm(theme, "Nothing to do. Re-index anyway?", false)?;
+            Ok(ok.then_some(IngestMode::Full))
+        }
+        (RepoState::OutOfDate(info), false) => {
+            let prev = info.indexed_commit_id.clone().unwrap();
+            eprintln!(
+                "Previously indexed at {} (branch {}).",
+                short_commit(&prev),
+                info.branch
+            );
+            let ok = confirm(
+                theme,
+                format!(
+                    "Update incrementally from {} to {}?",
+                    short_commit(&prev),
+                    short_commit(commit_id)
+                ),
+                true,
+            )?;
+            Ok(ok.then_some(IngestMode::Incremental { since: prev }))
+        }
+    }
+}
+
+async fn send_all_messages(
+    sqs: &SqsClient,
+    queue_url: &str,
+    repo_id: &str,
+    repo_root: &Path,
+    deleted_files: &[PathBuf],
+    supported: &[&PathBuf],
+) -> Result<()> {
+    for file in deleted_files {
         eprintln!("[delete] {}", file.display());
         let msg = FileMessage {
             action: Action::Delete,
-            repo_id: repo_id.clone(),
-            branch: default_branch.clone(),
-            commit_id: commit_id.clone(),
-            source_path: Some(file.display().to_string()),
+            repo_id: repo_id.to_string(),
+            source_path: file.display().to_string(),
             content: None,
             chunks: Vec::new(),
         };
-        send_message(&sqs, queue_url, &msg).await?;
+        sqs_helper::send_file_message(sqs, queue_url, &msg).await?;
     }
 
     let mut total_chunks = 0;
@@ -214,7 +320,7 @@ pub async fn handle(target: &str, force: bool, since: Option<&str>, profile_name
             }
         };
 
-        let source_type = source_type_for(file);
+        let source_type = SourceType::from_path(file);
         let chunk_entries: Vec<ChunkEntry> = chunks
             .iter()
             .map(|c| ChunkEntry {
@@ -233,18 +339,17 @@ pub async fn handle(target: &str, force: bool, since: Option<&str>, profile_name
 
         let msg = FileMessage {
             action: Action::Upsert,
-            repo_id: repo_id.clone(),
-            branch: default_branch.clone(),
-            commit_id: commit_id.clone(),
-            source_path: Some(file.display().to_string()),
+            repo_id: repo_id.to_string(),
+            source_path: file.display().to_string(),
             content: Some(content),
             chunks: chunk_entries,
         };
 
         eprintln!("[{}/{}] {}", i + 1, total_files, file.display());
-        send_message(&sqs, queue_url, &msg).await?;
+        sqs_helper::send_file_message(sqs, queue_url, &msg).await?;
     }
     eprintln!("{} chunks from {} files sent.", total_chunks, total_files);
 
     Ok(())
 }
+

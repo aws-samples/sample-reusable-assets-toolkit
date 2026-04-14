@@ -61,16 +61,15 @@ async fn handler(state: &AppState, event: LambdaEvent<SqsEvent>) -> Result<(), E
             }
         };
 
-        info!(action = ?msg.action, repo_id = %msg.repo_id, source_path = ?msg.source_path, "Processing message");
+        info!(action = ?msg.action, repo_id = %msg.repo_id, source_path = %msg.source_path, "Processing message");
 
         let result = match msg.action {
             Action::Upsert => handle_upsert(state, &msg).await,
             Action::Delete => handle_delete(state, &msg).await,
-            Action::Purge => handle_purge(state, &msg).await,
         };
 
         if let Err(e) = result {
-            error!(error = %e, action = ?msg.action, repo_id = %msg.repo_id, source_path = ?msg.source_path, "Failed to process message");
+            error!(error = %e, action = ?msg.action, repo_id = %msg.repo_id, source_path = %msg.source_path, "Failed to process message");
         }
     }
 
@@ -84,7 +83,11 @@ async fn handle_upsert(state: &AppState, msg: &FileMessage) -> Result<(), Error>
 
     let mut tx = state.pool.begin().await?;
 
-    queries::upsert_repo(&mut *tx, &msg.repo_id, &msg.branch, &msg.commit_id).await?;
+    if queries::get_repo(&mut *tx, &msg.repo_id).await?.is_none() {
+        warn!(repo_id = %msg.repo_id, source_path = %msg.source_path, "repo not found, skipping upsert");
+        drop(tx);
+        return Ok(());
+    }
 
     let file_id = queries::upsert_file(
         &mut *tx,
@@ -139,18 +142,14 @@ async fn handle_upsert(state: &AppState, msg: &FileMessage) -> Result<(), Error>
 }
 
 async fn handle_delete(state: &AppState, msg: &FileMessage) -> Result<(), Error> {
-    let source_path = msg.source_path.as_deref().ok_or("delete requires source_path")?;
+    if queries::get_repo(&state.pool, &msg.repo_id).await?.is_none() {
+        warn!(repo_id = %msg.repo_id, source_path = %msg.source_path, "repo not found, skipping delete");
+        return Ok(());
+    }
 
-    let rows = queries::delete_file(&state.pool, &msg.repo_id, source_path).await?;
+    let rows = queries::delete_file(&state.pool, &msg.repo_id, &msg.source_path).await?;
 
-    info!(rows, repo_id = %msg.repo_id, source_path, "Delete complete");
-    Ok(())
-}
-
-async fn handle_purge(state: &AppState, msg: &FileMessage) -> Result<(), Error> {
-    let rows = queries::delete_repo(&state.pool, &msg.repo_id).await?;
-
-    warn!(rows, repo_id = %msg.repo_id, "Purge complete");
+    info!(rows, repo_id = %msg.repo_id, source_path = %msg.source_path, "Delete complete");
     Ok(())
 }
 

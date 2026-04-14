@@ -1,12 +1,10 @@
-use rat_core::summary;
+use rat_core::summary::{self, SummaryContext};
 use rat_lambda::{build_file_record, build_snippet_records, FileMessage};
 
 fn sample_upsert_json() -> &'static str {
     r#"{
         "action": "upsert",
         "repo_id": "https://github.com/example/repo",
-        "branch": "main",
-        "commit_id": "abc123def",
         "source_path": "src/main.rs",
         "content": "use std::io;\n\nfn main() {\n    println!(\"hello\");\n}\n\nfn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n",
         "chunks": [
@@ -30,8 +28,6 @@ fn sample_markdown_json() -> &'static str {
     r###"{
         "action": "upsert",
         "repo_id": "https://github.com/example/repo",
-        "branch": "main",
-        "commit_id": "abc123def",
         "source_path": "docs/getting-started.md",
         "content": "# 시작하기\n\n이 가이드는 프로젝트 설정 과정을 안내합니다.\n\n## 사전 요구사항\n\n- Rust 1.75 이상\n- PostgreSQL 15 이상\n- AWS CLI 설정 완료\n\n## 설치\n\n```bash\ncargo install rat-cli\nrat configure\nrat login\n```\n\n## 사용법\n\n설치 후 저장소를 인덱싱합니다:\n\n```bash\nrat ingest --repo https://github.com/example/repo\nrat search \"인증은 어떻게 동작하나요?\"\n```\n",
         "chunks": [
@@ -55,17 +51,7 @@ fn sample_delete_json() -> &'static str {
     r#"{
         "action": "delete",
         "repo_id": "https://github.com/example/repo",
-        "branch": "main",
-        "commit_id": "abc123def",
         "source_path": "src/old.rs"
-    }"#
-}
-
-fn sample_purge_json() -> &'static str {
-    r#"{
-        "action": "purge",
-        "repo_id": "https://github.com/example/repo",
-        "commit_id": "abc123def"
     }"#
 }
 
@@ -99,10 +85,16 @@ async fn test_summary_generation() {
     let bedrock = aws_sdk_bedrockruntime::Client::new(&aws_config);
 
     let msg: FileMessage = serde_json::from_str(sample_upsert_json()).unwrap();
+    let file_rec = build_file_record(&msg).unwrap();
     let snippet_recs = build_snippet_records(&msg);
 
     for (i, rec) in snippet_recs.iter().enumerate() {
-        let description = summary::generate_summary(&bedrock, model_id, rec.content)
+        let ctx = SummaryContext {
+            source_path: file_rec.source_path,
+            language: file_rec.language,
+            source_type: rec.source_type,
+        };
+        let description = summary::generate_summary(&bedrock, model_id, rec.content, &ctx)
             .await
             .unwrap();
         println!("--- snippet[{i}] summary ---");
@@ -140,10 +132,16 @@ async fn test_markdown_summary_generation() {
     let bedrock = aws_sdk_bedrockruntime::Client::new(&aws_config);
 
     let msg: FileMessage = serde_json::from_str(sample_markdown_json()).unwrap();
+    let file_rec = build_file_record(&msg).unwrap();
     let snippet_recs = build_snippet_records(&msg);
 
     for (i, rec) in snippet_recs.iter().enumerate() {
-        let description = summary::generate_summary(&bedrock, model_id, rec.content)
+        let ctx = SummaryContext {
+            source_path: file_rec.source_path,
+            language: file_rec.language,
+            source_type: rec.source_type,
+        };
+        let description = summary::generate_summary(&bedrock, model_id, rec.content, &ctx)
             .await
             .unwrap();
         println!("--- markdown snippet[{i}] summary ---");
@@ -175,16 +173,6 @@ fn test_delete_record() {
 
     println!("=== Delete ===");
     println!("repo_id:     {}", msg.repo_id);
-    println!("source_path: {:?}", msg.source_path);
-    println!("chunks:      {} (should be 0)", msg.chunks.len());
-}
-
-#[test]
-fn test_purge_record() {
-    let msg: FileMessage = serde_json::from_str(sample_purge_json()).unwrap();
-
-    println!("=== Purge ===");
-    println!("repo_id:     {}", msg.repo_id);
-    println!("source_path: {:?} (should be None)", msg.source_path);
+    println!("source_path: {}", msg.source_path);
     println!("chunks:      {} (should be 0)", msg.chunks.len());
 }

@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use serde::{Deserialize, Serialize};
 
 /// SQS로 전송할 파일 단위 메시지.
@@ -6,11 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct FileMessage {
     pub action: Action,
     pub repo_id: String,
-    pub branch: String,
-    pub commit_id: String,
-    /// Purge일 때는 None
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub source_path: Option<String>,
+    pub source_path: String,
     /// Upsert가 아닐 때는 None
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
@@ -26,8 +24,6 @@ pub enum Action {
     Upsert,
     /// 파일 삭제 (해당 source_path의 레코드 삭제)
     Delete,
-    /// repo 전체 삭제 (force 재인덱싱 시)
-    Purge,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -50,6 +46,16 @@ impl SourceType {
         match self {
             SourceType::Code => "code",
             SourceType::Doc => "doc",
+        }
+    }
+
+    /// 파일 확장자로 source type을 추론한다. `.md`는 Doc, 나머지는 Code.
+    pub fn from_path(path: &Path) -> Self {
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+        if ext == "md" {
+            Self::Doc
+        } else {
+            Self::Code
         }
     }
 }

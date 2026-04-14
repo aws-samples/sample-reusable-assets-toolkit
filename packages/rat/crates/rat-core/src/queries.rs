@@ -1,17 +1,17 @@
 use pgvector::Vector;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::PgExecutor;
 
-#[derive(Serialize, sqlx::FromRow)]
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct RepoRow {
     pub repo_id: String,
     pub branch: String,
-    pub indexed_commit_id: String,
+    pub indexed_commit_id: Option<String>,
     pub file_count: i64,
     pub snippet_count: i64,
 }
 
-#[derive(Serialize, sqlx::FromRow)]
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct SnippetRow {
     pub id: i64,
     pub repo_id: String,
@@ -34,14 +34,14 @@ pub async fn upsert_repo<'e, E: PgExecutor<'e>>(
     executor: E,
     repo_id: &str,
     branch: &str,
-    commit_id: &str,
+    commit_id: Option<&str>,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         "INSERT INTO repos (repo_id, branch, indexed_commit_id)
          VALUES ($1, $2, $3)
          ON CONFLICT (repo_id) DO UPDATE
          SET branch = EXCLUDED.branch,
-             indexed_commit_id = EXCLUDED.indexed_commit_id,
+             indexed_commit_id = COALESCE(EXCLUDED.indexed_commit_id, repos.indexed_commit_id),
              updated_at = NOW()",
     )
     .bind(repo_id)
@@ -158,6 +158,29 @@ pub async fn count_repo_contents<'e, E: PgExecutor<'e>>(
         deleted_files,
         deleted_snippets,
     }))
+}
+
+pub async fn get_repo<'e, E: PgExecutor<'e>>(
+    executor: E,
+    repo_id: &str,
+) -> Result<Option<RepoRow>, sqlx::Error> {
+    sqlx::query_as::<_, RepoRow>(
+        r#"
+        SELECT r.repo_id,
+               r.branch,
+               r.indexed_commit_id,
+               COUNT(DISTINCT f.id) AS file_count,
+               COUNT(s.id) AS snippet_count
+        FROM repos r
+        LEFT JOIN files f ON f.repo_id = r.repo_id
+        LEFT JOIN snippets s ON s.file_id = f.id
+        WHERE r.repo_id = $1
+        GROUP BY r.repo_id, r.branch, r.indexed_commit_id
+        "#,
+    )
+    .bind(repo_id)
+    .fetch_optional(executor)
+    .await
 }
 
 pub async fn list_repos<'e, E: PgExecutor<'e>>(

@@ -30,12 +30,11 @@ pub struct SnippetRecord<'a> {
 }
 
 pub fn build_file_record(msg: &FileMessage) -> Result<FileRecord<'_>, &'static str> {
-    let source_path = msg.source_path.as_deref().ok_or("upsert requires source_path")?;
     let content = msg.content.as_deref().ok_or("upsert requires content")?;
-    let language = language_from_path(source_path);
+    let language = language_from_path(&msg.source_path);
     Ok(FileRecord {
         repo_id: &msg.repo_id,
-        source_path,
+        source_path: &msg.source_path,
         content,
         language,
     })

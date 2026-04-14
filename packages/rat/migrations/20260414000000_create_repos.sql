@@ -1,7 +1,7 @@
 CREATE TABLE repos (
     repo_id TEXT PRIMARY KEY,
     branch TEXT NOT NULL,
-    indexed_commit_id TEXT NOT NULL,
+    indexed_commit_id TEXT,
     description TEXT,
     embedding vector(1024),
     search_vector tsvector

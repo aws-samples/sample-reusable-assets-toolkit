@@ -1,6 +1,7 @@
 use lambda_runtime::{service_fn, Error, LambdaEvent};
+use rat_core::api::{ApiRequest, ApiResponse};
 use rat_core::db;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use sqlx::PgPool;
 use tracing::{error, info};
 
@@ -15,24 +16,6 @@ struct Config {
 pub struct AppState {
     pool: PgPool,
     bedrock: aws_sdk_bedrockruntime::Client,
-}
-
-#[derive(Deserialize)]
-#[serde(tag = "action", rename_all = "snake_case")]
-enum ApiRequest {
-    Search(actions::search::SearchRequest),
-    List(actions::list::ListRequest),
-    Purge(actions::purge::PurgeRequest),
-    RepoCreate(actions::repo_create::RepoCreateRequest),
-}
-
-#[derive(Serialize)]
-#[serde(untagged)]
-enum ApiResponse {
-    Search(actions::search::SearchResponse),
-    List(actions::list::ListResponse),
-    Purge(actions::purge::PurgeResponse),
-    RepoCreate(actions::repo_create::RepoCreateResponse),
 }
 
 async fn init() -> Result<AppState, Error> {
@@ -61,7 +44,8 @@ async fn handler(
         ApiRequest::Search(req) => actions::search::handle_search(state, req).await.map(ApiResponse::Search),
         ApiRequest::List(req) => actions::list::handle_list(state, req).await.map(ApiResponse::List),
         ApiRequest::Purge(req) => actions::purge::handle_purge(state, req).await.map(ApiResponse::Purge),
-        ApiRequest::RepoCreate(req) => actions::repo_create::handle_repo_create(state, req).await.map(ApiResponse::RepoCreate),
+        ApiRequest::RepoUpsert(req) => actions::repo_upsert::handle_repo_upsert(state, req).await.map(ApiResponse::RepoUpsert),
+        ApiRequest::RepoGet(req) => actions::repo_get::handle_repo_get(state, req).await.map(ApiResponse::RepoGet),
     }
 }
 

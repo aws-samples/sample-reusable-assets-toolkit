@@ -17,12 +17,9 @@ enum Cli {
     Ingest {
         /// Local path to the repository
         target: String,
-        /// Force re-indexing (purge existing records and re-index everything).
-        #[arg(long, conflicts_with = "since")]
-        force: bool,
-        /// Previous commit id. If provided, only changed/deleted files since this commit are processed.
+        /// Force re-indexing (re-index every file regardless of commit state).
         #[arg(long)]
-        since: Option<String>,
+        force: bool,
         /// Profile name (default: "default")
         #[arg(long)]
         profile: Option<String>,
@@ -109,8 +106,8 @@ async fn main() -> anyhow::Result<()> {
         Cli::Configure { action, profile } => {
             cmd::configure::handle(action, profile.as_deref())?;
         }
-        Cli::Ingest { target, force, since, profile } => {
-            cmd::ingest::handle(&target, force, since.as_deref(), profile.as_deref()).await?;
+        Cli::Ingest { target, force, profile } => {
+            cmd::ingest::handle(&target, force, profile.as_deref()).await?;
         }
         Cli::Chunk { file } => {
             cmd::chunk::handle(&file)?;

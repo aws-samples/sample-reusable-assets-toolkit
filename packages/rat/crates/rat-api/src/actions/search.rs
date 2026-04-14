@@ -1,41 +1,12 @@
 use std::collections::HashMap;
 
 use lambda_runtime::Error;
-use rat_core::{
-    embedding,
-    queries::{self, SnippetRow},
-};
-use serde::{Deserialize, Serialize};
+use rat_core::api::{SearchRequest, SearchResponse, SearchResult};
+use rat_core::embedding;
+use rat_core::queries::{self, SnippetRow};
 use tracing::info;
 
 use crate::AppState;
-
-#[derive(Deserialize)]
-pub struct SearchRequest {
-    query: String,
-    #[serde(default)]
-    repo_id: Option<String>,
-    #[serde(default)]
-    source_type: Option<String>,
-    #[serde(default = "default_limit")]
-    limit: i64,
-}
-
-fn default_limit() -> i64 {
-    3
-}
-
-#[derive(Serialize)]
-pub struct SearchResponse {
-    results: Vec<SearchResult>,
-}
-
-#[derive(Serialize)]
-struct SearchResult {
-    #[serde(flatten)]
-    snippet: SnippetRow,
-    score: f64,
-}
 
 const RRF_K: f64 = 60.0;
 const SEARCH_POOL_SIZE: i64 = 50;

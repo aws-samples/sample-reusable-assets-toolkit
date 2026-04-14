@@ -3,6 +3,11 @@ use std::path::{Path, PathBuf};
 use anyhow::Context;
 use git2::Repository;
 
+/// Returns the first 8 characters of a commit SHA for display.
+pub fn short_commit(commit: &str) -> &str {
+    &commit[..8.min(commit.len())]
+}
+
 /// Discovers the git repository root from the given path.
 pub fn discover_repo_root(path: &Path) -> anyhow::Result<PathBuf> {
     let repo = Repository::discover(path)
