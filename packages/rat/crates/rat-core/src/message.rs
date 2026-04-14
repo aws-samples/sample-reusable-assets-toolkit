@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub struct FileMessage {
     pub action: Action,
     pub repo_id: String,
+    pub branch: String,
     pub commit_id: String,
     /// Purge일 때는 None
     #[serde(default, skip_serializing_if = "Option::is_none")]

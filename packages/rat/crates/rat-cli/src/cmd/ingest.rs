@@ -170,6 +170,7 @@ pub async fn handle(target: &str, force: bool, since: Option<&str>, profile_name
         let purge = FileMessage {
             action: Action::Purge,
             repo_id: repo_id.clone(),
+            branch: default_branch.clone(),
             commit_id: commit_id.clone(),
             source_path: None,
             content: None,
@@ -184,6 +185,7 @@ pub async fn handle(target: &str, force: bool, since: Option<&str>, profile_name
         let msg = FileMessage {
             action: Action::Delete,
             repo_id: repo_id.clone(),
+            branch: default_branch.clone(),
             commit_id: commit_id.clone(),
             source_path: Some(file.display().to_string()),
             content: None,
@@ -232,6 +234,7 @@ pub async fn handle(target: &str, force: bool, since: Option<&str>, profile_name
         let msg = FileMessage {
             action: Action::Upsert,
             repo_id: repo_id.clone(),
+            branch: default_branch.clone(),
             commit_id: commit_id.clone(),
             source_path: Some(file.display().to_string()),
             content: Some(content),

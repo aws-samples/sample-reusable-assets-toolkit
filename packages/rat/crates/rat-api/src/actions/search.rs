@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use lambda_runtime::Error;
-use pgvector::Vector;
-use rat_core::embedding;
+use rat_core::{
+    embedding,
+    queries::{self, SnippetRow},
+};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 use tracing::info;
 
 use crate::AppState;
@@ -29,20 +30,6 @@ pub struct SearchResponse {
     results: Vec<SearchResult>,
 }
 
-#[derive(Serialize, sqlx::FromRow)]
-struct SnippetRow {
-    id: i64,
-    repo_id: String,
-    source_path: String,
-    content: String,
-    description: String,
-    source_type: String,
-    symbol_name: Option<String>,
-    start_line: Option<i32>,
-    end_line: Option<i32>,
-    language: Option<String>,
-}
-
 #[derive(Serialize)]
 struct SearchResult {
     #[serde(flatten)]
@@ -62,8 +49,20 @@ pub async fn handle_search(
     let query_embedding = embedding::generate_embedding(&state.bedrock, &req.query, "GENERIC_RETRIEVAL").await?;
 
     let (fts_rows, vec_rows) = tokio::join!(
-        full_text_search(&state.pool, &req),
-        vector_search(&state.pool, &req, &query_embedding),
+        queries::full_text_search(
+            &state.pool,
+            &req.query,
+            req.repo_id.as_deref(),
+            req.source_type.as_deref(),
+            SEARCH_POOL_SIZE,
+        ),
+        queries::vector_search(
+            &state.pool,
+            &query_embedding,
+            req.repo_id.as_deref(),
+            req.source_type.as_deref(),
+            SEARCH_POOL_SIZE,
+        ),
     );
 
     let fts_rows = fts_rows?;
@@ -78,62 +77,6 @@ pub async fn handle_search(
     let results = fuse_rrf(fts_rows, vec_rows, req.limit as usize);
 
     Ok(SearchResponse { results })
-}
-
-async fn full_text_search(
-    pool: &PgPool,
-    req: &SearchRequest,
-) -> Result<Vec<SnippetRow>, Error> {
-    let rows = sqlx::query_as::<_, SnippetRow>(
-        r#"
-        SELECT s.id, s.repo_id, f.source_path, s.content, s.description,
-               s.source_type, s.symbol_name, s.start_line, s.end_line, f.language
-        FROM snippets s
-        JOIN files f ON f.id = s.file_id
-        WHERE s.search_vector @@ websearch_to_tsquery('english', $1)
-          AND ($2::text IS NULL OR s.repo_id = $2)
-          AND ($3::text IS NULL OR s.source_type = $3)
-        ORDER BY ts_rank(s.search_vector, websearch_to_tsquery('english', $1)) DESC
-        LIMIT $4
-        "#,
-    )
-    .bind(&req.query)
-    .bind(&req.repo_id)
-    .bind(&req.source_type)
-    .bind(SEARCH_POOL_SIZE)
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows)
-}
-
-async fn vector_search(
-    pool: &PgPool,
-    req: &SearchRequest,
-    query_embedding: &[f32],
-) -> Result<Vec<SnippetRow>, Error> {
-    let embedding = Vector::from(query_embedding.to_vec());
-
-    let rows = sqlx::query_as::<_, SnippetRow>(
-        r#"
-        SELECT s.id, s.repo_id, f.source_path, s.content, s.description,
-               s.source_type, s.symbol_name, s.start_line, s.end_line, f.language
-        FROM snippets s
-        JOIN files f ON f.id = s.file_id
-        WHERE ($1::text IS NULL OR s.repo_id = $1)
-          AND ($2::text IS NULL OR s.source_type = $2)
-        ORDER BY s.embedding <=> $3
-        LIMIT $4
-        "#,
-    )
-    .bind(&req.repo_id)
-    .bind(&req.source_type)
-    .bind(embedding)
-    .bind(SEARCH_POOL_SIZE)
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows)
 }
 
 fn fuse_rrf(

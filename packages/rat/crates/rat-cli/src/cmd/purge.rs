@@ -19,7 +19,9 @@ struct PurgeRequest<'a> {
 #[derive(Deserialize)]
 struct PurgeResponse {
     repo_id: String,
-    deleted_files: u64,
+    found: bool,
+    deleted_files: i64,
+    deleted_snippets: i64,
 }
 
 pub async fn handle(repo_id: &str, profile_name: Option<&str>) -> Result<()> {
@@ -64,10 +66,16 @@ pub async fn handle(repo_id: &str, profile_name: Option<&str>) -> Result<()> {
     let purge_response: PurgeResponse =
         serde_json::from_slice(payload.as_ref()).context("failed to parse purge response")?;
 
-    println!(
-        "Purged repo '{}': {} file(s) deleted.",
-        purge_response.repo_id, purge_response.deleted_files
-    );
+    if !purge_response.found {
+        println!("Repo '{}' not found.", purge_response.repo_id);
+    } else {
+        println!(
+            "Purged repo '{}': {} file(s), {} snippet(s) deleted.",
+            purge_response.repo_id,
+            purge_response.deleted_files,
+            purge_response.deleted_snippets
+        );
+    }
 
     Ok(())
 }

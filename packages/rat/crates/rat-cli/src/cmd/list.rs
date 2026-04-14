@@ -19,6 +19,8 @@ struct ListResponse {
 #[derive(Deserialize)]
 pub(crate) struct RepoRow {
     pub repo_id: String,
+    pub branch: String,
+    pub indexed_commit_id: String,
     pub file_count: i64,
     pub snippet_count: i64,
 }
@@ -76,11 +78,15 @@ pub async fn handle(profile_name: Option<&str>) -> Result<()> {
         return Ok(());
     }
 
-    println!("{:<60}  {:>10}  {:>12}", "REPO_ID", "FILES", "SNIPPETS");
+    println!(
+        "{:<60}  {:<20}  {:<10}  {:>10}  {:>12}",
+        "REPO_ID", "BRANCH", "COMMIT", "FILES", "SNIPPETS"
+    );
     for repo in &repos {
+        let short_commit = &repo.indexed_commit_id[..8.min(repo.indexed_commit_id.len())];
         println!(
-            "{:<60}  {:>10}  {:>12}",
-            repo.repo_id, repo.file_count, repo.snippet_count
+            "{:<60}  {:<20}  {:<10}  {:>10}  {:>12}",
+            repo.repo_id, repo.branch, short_commit, repo.file_count, repo.snippet_count
         );
     }
 

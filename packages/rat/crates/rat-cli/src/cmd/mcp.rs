@@ -117,11 +117,15 @@ impl RatMcpServer {
             )]));
         }
 
-        let mut text = format!("{:<60}  {:>10}  {:>12}\n", "REPO_ID", "FILES", "SNIPPETS");
+        let mut text = format!(
+            "{:<60}  {:<20}  {:<10}  {:>10}  {:>12}\n",
+            "REPO_ID", "BRANCH", "COMMIT", "FILES", "SNIPPETS"
+        );
         for repo in &repos {
+            let short_commit = &repo.indexed_commit_id[..8.min(repo.indexed_commit_id.len())];
             text.push_str(&format!(
-                "{:<60}  {:>10}  {:>12}\n",
-                repo.repo_id, repo.file_count, repo.snippet_count
+                "{:<60}  {:<20}  {:<10}  {:>10}  {:>12}\n",
+                repo.repo_id, repo.branch, short_commit, repo.file_count, repo.snippet_count
             ));
         }
 

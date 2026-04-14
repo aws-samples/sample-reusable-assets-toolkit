@@ -2,7 +2,7 @@ use aws_lambda_events::sqs::SqsEvent;
 use aws_sdk_bedrockruntime::Client as BedrockClient;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use pgvector::Vector;
-use rat_core::{db, embedding, summary, summary::SummaryContext};
+use rat_core::{db, embedding, queries, summary, summary::SummaryContext};
 use rat_lambda::{build_file_record, build_snippet_records, Action, FileMessage};
 use serde::Deserialize;
 use sqlx::PgPool;
@@ -84,25 +84,19 @@ async fn handle_upsert(state: &AppState, msg: &FileMessage) -> Result<(), Error>
 
     let mut tx = state.pool.begin().await?;
 
-    let file_id: i64 = sqlx::query_scalar(
-        "INSERT INTO files (repo_id, source_path, commit_id, content, language)
-         VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (repo_id, source_path) DO UPDATE
-         SET commit_id = EXCLUDED.commit_id, content = EXCLUDED.content, language = EXCLUDED.language
-         RETURNING id",
+    queries::upsert_repo(&mut *tx, &msg.repo_id, &msg.branch, &msg.commit_id).await?;
+
+    let file_id = queries::upsert_file(
+        &mut *tx,
+        file_rec.repo_id,
+        file_rec.source_path,
+        file_rec.commit_id,
+        file_rec.content,
+        file_rec.language,
     )
-    .bind(file_rec.repo_id)
-    .bind(file_rec.source_path)
-    .bind(file_rec.commit_id)
-    .bind(file_rec.content)
-    .bind(file_rec.language)
-    .fetch_one(&mut *tx)
     .await?;
 
-    sqlx::query("DELETE FROM snippets WHERE file_id = $1")
-        .bind(file_id)
-        .execute(&mut *tx)
-        .await?;
+    queries::delete_snippets_by_file(&mut *tx, file_id).await?;
 
     info!(file_id, chunks = snippet_recs.len(), "Inserting snippets");
 
@@ -125,19 +119,17 @@ async fn handle_upsert(state: &AppState, msg: &FileMessage) -> Result<(), Error>
             .await
             .map_err(|e| format!("embedding error: {e}"))?;
 
-        sqlx::query(
-            "INSERT INTO snippets (file_id, repo_id, content, description, embedding, source_type, start_line, end_line)
-             VALUES ($1, $2, $3, $4, $5::vector, $6, $7, $8)",
+        queries::insert_snippet(
+            &mut *tx,
+            file_id,
+            rec.repo_id,
+            rec.content,
+            &description,
+            Vector::from(emb),
+            rec.source_type,
+            rec.start_line,
+            rec.end_line,
         )
-        .bind(file_id)
-        .bind(rec.repo_id)
-        .bind(rec.content)
-        .bind(&description)
-        .bind(Vector::from(emb))
-        .bind(rec.source_type)
-        .bind(rec.start_line)
-        .bind(rec.end_line)
-        .execute(&mut *tx)
         .await?;
     }
 
@@ -150,23 +142,16 @@ async fn handle_upsert(state: &AppState, msg: &FileMessage) -> Result<(), Error>
 async fn handle_delete(state: &AppState, msg: &FileMessage) -> Result<(), Error> {
     let source_path = msg.source_path.as_deref().ok_or("delete requires source_path")?;
 
-    let result = sqlx::query("DELETE FROM files WHERE repo_id = $1 AND source_path = $2")
-        .bind(&msg.repo_id)
-        .bind(source_path)
-        .execute(&state.pool)
-        .await?;
+    let rows = queries::delete_file(&state.pool, &msg.repo_id, source_path).await?;
 
-    info!(rows = result.rows_affected(), repo_id = %msg.repo_id, source_path, "Delete complete");
+    info!(rows, repo_id = %msg.repo_id, source_path, "Delete complete");
     Ok(())
 }
 
 async fn handle_purge(state: &AppState, msg: &FileMessage) -> Result<(), Error> {
-    let result = sqlx::query("DELETE FROM files WHERE repo_id = $1")
-        .bind(&msg.repo_id)
-        .execute(&state.pool)
-        .await?;
+    let rows = queries::delete_repo(&state.pool, &msg.repo_id).await?;
 
-    warn!(rows = result.rows_affected(), repo_id = %msg.repo_id, "Purge complete");
+    warn!(rows, repo_id = %msg.repo_id, "Purge complete");
     Ok(())
 }
 
