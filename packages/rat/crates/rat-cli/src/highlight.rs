@@ -268,10 +268,19 @@ fn build_configs() -> HashMap<&'static str, HighlightConfiguration> {
         configs.insert("javascript", cfg);
     }
 
+    // TypeScript's HIGHLIGHTS_QUERY only contains TS-specific captures and
+    // expects to inherit from JavaScript (via `; inherits: javascript`, which
+    // tree-sitter-highlight does not process). Concatenate the JS query so
+    // strings, comments, functions, numbers, etc. are highlighted too.
+    let ts_query = format!(
+        "{}\n{}",
+        tree_sitter_javascript::HIGHLIGHT_QUERY,
+        tree_sitter_typescript::HIGHLIGHTS_QUERY
+    );
     if let Some(cfg) = configure(
         tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
         "typescript",
-        tree_sitter_typescript::HIGHLIGHTS_QUERY,
+        &ts_query,
         "",
         tree_sitter_typescript::LOCALS_QUERY,
     ) {
