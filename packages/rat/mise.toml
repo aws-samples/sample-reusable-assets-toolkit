@@ -35,7 +35,12 @@ run = '''
 set -euo pipefail
 
 TARGET=aarch64-apple-darwin
-VERSION=$(cargo pkgid -p rat-cli | sed 's/.*[#@]//')
+VERSION=$(cargo metadata --no-deps --format-version=1 \
+  | jq -r '.packages[] | select(.name=="rat-cli") | .version')
+if [ -z "${VERSION}" ]; then
+  echo "failed to resolve rat-cli version from cargo metadata" >&2
+  exit 1
+fi
 BINARY=target/${TARGET}/release/rat
 ASSET_NAME=rat-${TARGET}
 URL="https://gitlab.aws.dev/api/v4/projects/${GITLAB_PROJECT_ID}/packages/generic/rat-cli/${VERSION}/${ASSET_NAME}"
