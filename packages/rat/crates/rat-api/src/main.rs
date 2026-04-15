@@ -52,6 +52,7 @@ async fn handler(
         ApiRequest::Purge(req) => actions::purge::handle_purge(state, req).await.map(ApiResponse::Purge),
         ApiRequest::RepoUpsert(req) => actions::repo_upsert::handle_repo_upsert(state, req).await.map(ApiResponse::RepoUpsert),
         ApiRequest::RepoGet(req) => actions::repo_get::handle_repo_get(state, req).await.map(ApiResponse::RepoGet),
+        ApiRequest::RepoSearch(req) => actions::repo_search::handle_repo_search(state, req).await.map(ApiResponse::RepoSearch),
     }
 }
 

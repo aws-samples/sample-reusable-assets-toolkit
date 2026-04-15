@@ -44,6 +44,17 @@ pub struct RepoGetRequest {
     pub repo_id: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RepoSearchRequest {
+    pub query: String,
+    #[serde(default = "default_repo_limit")]
+    pub limit: i64,
+}
+
+fn default_repo_limit() -> i64 {
+    5
+}
+
 // ── Responses ──
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -81,6 +92,18 @@ pub struct RepoGetResponse {
     pub repo: Option<RepoRow>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RepoSearchResult {
+    #[serde(flatten)]
+    pub repo: RepoRow,
+    pub score: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RepoSearchResponse {
+    pub results: Vec<RepoSearchResult>,
+}
+
 // ── Routing enums ──
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -91,6 +114,7 @@ pub enum ApiRequest {
     Purge(PurgeRequest),
     RepoUpsert(RepoUpsertRequest),
     RepoGet(RepoGetRequest),
+    RepoSearch(RepoSearchRequest),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -101,4 +125,5 @@ pub enum ApiResponse {
     Purge(PurgeResponse),
     RepoUpsert(RepoUpsertResponse),
     RepoGet(RepoGetResponse),
+    RepoSearch(RepoSearchResponse),
 }

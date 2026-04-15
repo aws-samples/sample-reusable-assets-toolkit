@@ -28,5 +28,6 @@ aws-sdk-cognitoidentity = "1"
 aws-sdk-ssm = "1"
 aws-sdk-lambda = "1"
 aws-sdk-sqs = "1"
+lambda_runtime = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }

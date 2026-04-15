@@ -1,11 +1,16 @@
 use std::path::Path;
 
 use anyhow::Result;
-use rat_cli::chunk;
+use rat_cli::{chunk, highlight};
 
 pub fn handle(file: &str) -> Result<()> {
     let path = Path::new(file).canonicalize()?;
     let chunks = chunk::chunk_file(&path)?;
+    let lang = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .and_then(highlight::language_from_ext);
+
     for (i, c) in chunks.iter().enumerate() {
         println!(
             "--- chunk {} (L{}-L{}) {} ---",
@@ -15,9 +20,9 @@ pub fn handle(file: &str) -> Result<()> {
             c.symbol_name.as_deref().unwrap_or("")
         );
         if !c.imports.is_empty() {
-            println!("[imports]\n{}\n", c.imports);
+            println!("{}", highlight::highlight(&c.imports, lang));
         }
-        println!("{}", c.content);
+        println!("{}", highlight::highlight(&c.content, lang));
         println!();
     }
     println!("{} chunks total", chunks.len());

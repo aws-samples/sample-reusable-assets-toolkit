@@ -1,6 +1,14 @@
 mod cmd;
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+#[clap(rename_all = "lowercase")]
+enum SearchScope {
+    Code,
+    Doc,
+    Repo,
+}
 
 #[derive(Parser)]
 #[command(name = "rat", version, about = "Reusable Asset Toolkit")]
@@ -79,19 +87,19 @@ enum Cli {
         #[arg(long)]
         profile: Option<String>,
     },
-    /// Search code snippets
+    /// Search indexed content
     Search {
         /// Search query
         query: String,
-        /// Filter by repository ID
+        /// Filter by repository ID (ignored for scope=repo)
         #[arg(long)]
         repo_id: Option<String>,
-        /// Filter by source type (code, doc)
-        #[arg(long, default_value = "code")]
-        source_type: String,
-        /// Maximum number of results
-        #[arg(long, default_value = "3")]
-        limit: i64,
+        /// Search scope: code snippets, docs, or repositories
+        #[arg(long, value_enum, default_value_t = SearchScope::Code)]
+        scope: SearchScope,
+        /// Maximum number of results (default: 3 for code/doc, 5 for repo)
+        #[arg(long)]
+        limit: Option<i64>,
         /// Profile name (default: "default")
         #[arg(long)]
         profile: Option<String>,
@@ -133,8 +141,8 @@ async fn main() -> anyhow::Result<()> {
         Cli::Migration { reset, profile } => {
             cmd::migration::handle(reset, profile.as_deref()).await?;
         }
-        Cli::Search { query, repo_id, source_type, limit, profile } => {
-            cmd::search::handle(&query, repo_id.as_deref(), &source_type, limit, profile.as_deref()).await?;
+        Cli::Search { query, repo_id, scope, limit, profile } => {
+            cmd::search::handle(&query, repo_id.as_deref(), scope, limit, profile.as_deref()).await?;
         }
     }
 

@@ -4,6 +4,7 @@ pub mod aws;
 pub mod chunk;
 pub mod config;
 pub mod git;
+pub mod highlight;
 pub mod ratignore;
 pub mod session;
 pub mod sqs;

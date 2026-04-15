@@ -228,6 +228,63 @@ pub async fn list_repos<'e, E: PgExecutor<'e>>(
     .await
 }
 
+pub async fn full_text_search_repos<'e, E: PgExecutor<'e>>(
+    executor: E,
+    query: &str,
+    limit: i64,
+) -> Result<Vec<RepoRow>, sqlx::Error> {
+    sqlx::query_as::<_, RepoRow>(
+        r#"
+        SELECT r.repo_id,
+               r.branch,
+               r.indexed_commit_id,
+               r.description,
+               COUNT(DISTINCT f.id) AS file_count,
+               COUNT(s.id) AS snippet_count
+        FROM repos r
+        LEFT JOIN files f ON f.repo_id = r.repo_id
+        LEFT JOIN snippets s ON s.file_id = f.id
+        WHERE r.search_vector @@ websearch_to_tsquery('english', $1)
+        GROUP BY r.repo_id
+        ORDER BY ts_rank(r.search_vector, websearch_to_tsquery('english', $1)) DESC
+        LIMIT $2
+        "#,
+    )
+    .bind(query)
+    .bind(limit)
+    .fetch_all(executor)
+    .await
+}
+
+pub async fn vector_search_repos<'e, E: PgExecutor<'e>>(
+    executor: E,
+    query_embedding: &[f32],
+    limit: i64,
+) -> Result<Vec<RepoRow>, sqlx::Error> {
+    let embedding = Vector::from(query_embedding.to_vec());
+    sqlx::query_as::<_, RepoRow>(
+        r#"
+        SELECT r.repo_id,
+               r.branch,
+               r.indexed_commit_id,
+               r.description,
+               COUNT(DISTINCT f.id) AS file_count,
+               COUNT(s.id) AS snippet_count
+        FROM repos r
+        LEFT JOIN files f ON f.repo_id = r.repo_id
+        LEFT JOIN snippets s ON s.file_id = f.id
+        WHERE r.embedding IS NOT NULL
+        GROUP BY r.repo_id
+        ORDER BY r.embedding <=> $1
+        LIMIT $2
+        "#,
+    )
+    .bind(embedding)
+    .bind(limit)
+    .fetch_all(executor)
+    .await
+}
+
 pub async fn full_text_search<'e, E: PgExecutor<'e>>(
     executor: E,
     query: &str,

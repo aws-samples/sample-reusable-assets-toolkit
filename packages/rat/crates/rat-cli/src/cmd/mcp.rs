@@ -27,6 +27,17 @@ pub struct SearchParams {
     pub limit: Option<i64>,
 }
 
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct RepoSearchParams {
+    #[schemars(
+        description = "Search query describing the kind of repository to find. MUST be written in English — translate non-English user input before calling this tool."
+    )]
+    pub query: String,
+    #[schemars(description = "Maximum number of repositories to return (default: 5)")]
+    #[serde(default)]
+    pub limit: Option<i64>,
+}
+
 #[derive(Clone)]
 pub struct RatMcpServer {
     profile_name: Option<String>,
@@ -103,6 +114,65 @@ impl RatMcpServer {
     }
 
     #[tool(
+        description = "Search the rat reusable asset store for repositories matching a natural-language query. \
+            Use this tool when the user asks for a REPOSITORY (project, codebase, team repo) that does a particular thing — \
+            e.g. \"find repos about authentication\", \"which project handles payments?\", \"show me repos for vector search\". \
+            For individual code snippets or functions, use the `search` tool instead. \
+            IMPORTANT: the `query` parameter MUST be in English; translate non-English intent before calling. \
+            Returns matching repositories ranked by relevance with their description, branch, and file/snippet counts."
+    )]
+    async fn search_repos(
+        &self,
+        Parameters(params): Parameters<RepoSearchParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let limit = params.limit.unwrap_or(5);
+
+        let results = search::run_repo_search(
+            &params.query,
+            limit,
+            self.profile_name.as_deref(),
+        )
+        .await
+        .map_err(|e| McpError::internal_error(format!("repo search failed: {e:#}"), None))?;
+
+        if results.is_empty() {
+            return Ok(CallToolResult::success(vec![Content::text(
+                "No repositories found.",
+            )]));
+        }
+
+        let contents = results
+            .iter()
+            .map(|r| {
+                let repo = &r.repo;
+                let commit = repo
+                    .indexed_commit_id
+                    .as_deref()
+                    .map(rat_cli::git::short_commit)
+                    .unwrap_or("-");
+                let description = repo
+                    .description
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|d| !d.is_empty())
+                    .unwrap_or("(no description)");
+                Content::text(format!(
+                    "─── {} (score: {:.4}) ───\n  branch: {}  commit: {}  files: {}  snippets: {}\n{}\n",
+                    repo.repo_id,
+                    r.score,
+                    repo.branch,
+                    commit,
+                    repo.file_count,
+                    repo.snippet_count,
+                    description,
+                ))
+            })
+            .collect();
+
+        Ok(CallToolResult::success(contents))
+    }
+
+    #[tool(
         description = "List all repositories indexed in the rat reusable asset store, with file and snippet counts. \
             Use this to discover which repositories are available before calling `search` with a `repo_id` filter, \
             or whenever the user asks what repos / assets are indexed in rat."
@@ -132,6 +202,14 @@ impl RatMcpServer {
                 "{:<60}  {:<20}  {:<10}  {:>10}  {:>12}\n",
                 repo.repo_id, repo.branch, commit, repo.file_count, repo.snippet_count
             ));
+            let description = repo
+                .description
+                .as_deref()
+                .map(str::trim)
+                .filter(|d| !d.is_empty())
+                .unwrap_or("(no description)");
+            text.push_str(description);
+            text.push_str("\n\n");
         }
 
         Ok(CallToolResult::success(vec![Content::text(text)]))

@@ -47,6 +47,7 @@ pub async fn handle(profile_name: Option<&str>) -> Result<()> {
             Some(d) if !d.trim().is_empty() => println!("{}", d.trim()),
             _ => println!("(no description)"),
         }
+        println!();
     }
 
     Ok(())
