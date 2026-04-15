@@ -26,7 +26,7 @@ packages/
 |-------|-------------|
 | `rat-core` | Core logic: Git integration, tree-sitter chunking, DB models |
 | `rat-cli` | User-facing CLI (ingest, search, chunk, mcp, etc.) |
-| `rat-api` | Axum-based API server |
+| `rat-api` | Lambda handler invoked directly for search/list APIs |
 | `rat-lambda` | Consumer Lambda that processes SQS messages |
 | `rat-migration` | Aurora PostgreSQL migration runner |
 
@@ -216,4 +216,4 @@ Tool names listed in `autoApprove` are executed without per-call confirmation. T
 
 ### Note
 
-Run `rat login` to obtain a Cognito token **before** invoking MCP tools. If the token expires, searches will fail — log in again.
+Run `rat login` to obtain a Cognito token **before** invoking MCP tools. Access tokens are automatically refreshed using the stored refresh token; if the refresh token itself expires, log in again.
