@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use aws_sdk_sqs::Client as SqsClient;
 use dialoguer::console::Style;
 use dialoguer::theme::ColorfulTheme;
@@ -49,9 +49,17 @@ pub async fn handle(target: &str, force: bool, profile_name: Option<&str>) -> Re
     let target_path = Path::new(target).canonicalize()?;
     let repo_root = git::discover_repo_root(&target_path)?;
 
+    let theme = ColorfulTheme {
+        active_item_style: Style::new().color256(183),
+        active_item_prefix: dialoguer::console::style("❯ ".to_string()).color256(183),
+        inactive_item_prefix: dialoguer::console::style("  ".to_string()),
+        ..ColorfulTheme::default()
+    };
+
     if target_path != repo_root {
-        bail!(
-            "ingest must run from the repository root: {}",
+        eprintln!(
+            "Target '{}' is not the repository root; using detected root: {}",
+            target_path.display(),
             repo_root.display()
         );
     }
@@ -60,13 +68,6 @@ pub async fn handle(target: &str, force: bool, profile_name: Option<&str>) -> Re
     let current_branch = git::current_branch(&repo_root)?
         .unwrap_or_else(|| "HEAD".to_string());
     let commit_id = git::branch_commit_id(&repo_root, &default_branch)?;
-
-    let theme = ColorfulTheme {
-        active_item_style: Style::new().color256(183),
-        active_item_prefix: dialoguer::console::style("❯ ".to_string()).color256(183),
-        inactive_item_prefix: dialoguer::console::style("  ".to_string()),
-        ..ColorfulTheme::default()
-    };
 
     let repo_id = match git::select_remote_url(&repo_root)? {
         Some(url) => git::canonicalize_remote_url(&url),
@@ -94,15 +95,14 @@ pub async fn handle(target: &str, force: bool, profile_name: Option<&str>) -> Re
     let lambda = aws_sdk_lambda::Client::new(&session.aws_config);
     let profile = &session.profile;
 
-    // repo 상태 조회 → 분류 → 프롬프트로 mode 확정
+    // repo 상태 조회 → 분류 → 계획 결정 (프롬프트 없음)
     eprintln!("Checking repository state...");
     let existing = api_client::fetch_repo(&lambda, &profile.api_function_arn, &repo_id).await?;
     let state = RepoState::classify(existing.as_ref(), &commit_id);
-
-    let mode = match prompt_mode(&theme, &state, &commit_id, force)? {
+    let mode = match plan_mode(&state, force) {
         Some(m) => m,
         None => {
-            eprintln!("Aborted.");
+            eprintln!("Already indexed at {}. Nothing to do.", short_commit(&commit_id));
             return Ok(());
         }
     };
@@ -137,6 +137,12 @@ pub async fn handle(target: &str, force: bool, profile_name: Option<&str>) -> Re
         target_files.len(),
         deleted_files.len()
     );
+
+    // 최종 confirm
+    if !confirm(&theme, "Proceed with ingest?", true)? {
+        eprintln!("Aborted.");
+        return Ok(());
+    }
 
     // 신규 repo인 경우에만 사전 row 생성 (commit_id는 NULL — 완료 후 갱신)
     if existing.is_none() {
@@ -212,17 +218,13 @@ fn confirm(theme: &ColorfulTheme, prompt: impl Into<String>, default_yes: bool) 
     })
 }
 
-fn prompt_mode(
-    theme: &ColorfulTheme,
-    state: &RepoState<'_>,
-    commit_id: &str,
-    force: bool,
-) -> Result<Option<IngestMode>> {
+/// 상태 + force 플래그로부터 실행 계획을 결정. 프롬프트는 하지 않고 안내 메시지만 출력.
+/// `None`이면 할 일이 없어 종료.
+fn plan_mode(state: &RepoState<'_>, force: bool) -> Option<IngestMode> {
     match (state, force) {
         (RepoState::NotIndexed, _) => {
-            eprintln!("Repository not indexed yet.");
-            let ok = confirm(theme, "Create and ingest entire repository?", true)?;
-            Ok(ok.then_some(IngestMode::Full))
+            eprintln!("Plan       : create and ingest entire repository");
+            Some(IngestMode::Full)
         }
         (
             RepoState::Interrupted(info)
@@ -231,51 +233,31 @@ fn prompt_mode(
             true,
         ) => {
             eprintln!(
-                "Existing repo at {} ({} files, {} snippets).",
+                "Plan       : force re-index (existing: {} files, {} snippets at {})",
+                info.file_count,
+                info.snippet_count,
                 info.indexed_commit_id
                     .as_deref()
                     .map(short_commit)
                     .unwrap_or("-"),
-                info.file_count,
-                info.snippet_count
             );
-            let ok = confirm(theme, "Force re-index every file. Continue?", false)?;
-            Ok(ok.then_some(IngestMode::Full))
+            Some(IngestMode::Full)
         }
         (RepoState::Interrupted(_), false) => {
-            eprintln!(
-                "Repository row exists but was not finalized (previous ingest interrupted)."
-            );
-            let ok = confirm(theme, "Re-index entire repository?", true)?;
-            Ok(ok.then_some(IngestMode::Full))
+            eprintln!("Plan       : re-index entire repository (previous ingest was interrupted)");
+            Some(IngestMode::Full)
         }
-        (RepoState::AlreadyIndexed(info), false) => {
-            eprintln!(
-                "Already indexed at commit {} ({} files, {} snippets).",
-                short_commit(commit_id),
-                info.file_count,
-                info.snippet_count
-            );
-            let ok = confirm(theme, "Nothing to do. Re-index anyway?", false)?;
-            Ok(ok.then_some(IngestMode::Full))
-        }
+        (RepoState::AlreadyIndexed(_), false) => None,
         (RepoState::OutOfDate(info), false) => {
-            let prev = info.indexed_commit_id.clone().unwrap();
+            let prev = info.indexed_commit_id.as_deref().unwrap();
             eprintln!(
-                "Previously indexed at {} (branch {}).",
-                short_commit(&prev),
+                "Plan       : incremental update from {} (branch {})",
+                short_commit(prev),
                 info.branch
             );
-            let ok = confirm(
-                theme,
-                format!(
-                    "Update incrementally from {} to {}?",
-                    short_commit(&prev),
-                    short_commit(commit_id)
-                ),
-                true,
-            )?;
-            Ok(ok.then_some(IngestMode::Incremental { since: prev }))
+            Some(IngestMode::Incremental {
+                since: prev.to_string(),
+            })
         }
     }
 }

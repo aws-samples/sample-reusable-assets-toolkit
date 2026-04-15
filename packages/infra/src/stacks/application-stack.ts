@@ -153,7 +153,7 @@ export class ApplicationStack extends Stack {
 
     consumer.addEventSource(
       new eventsources.SqsEventSource(queue, {
-        batchSize: 1,
+        batchSize: 3,
         maxBatchingWindow: Duration.seconds(30),
         maxConcurrency: 2,
       }),
