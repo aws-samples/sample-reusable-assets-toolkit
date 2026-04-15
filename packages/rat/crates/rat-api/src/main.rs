@@ -11,11 +11,13 @@ mod actions;
 struct Config {
     rds_proxy_endpoint: String,
     db_secret_arn: String,
+    summary_model_id: String,
 }
 
 pub struct AppState {
-    pool: PgPool,
-    bedrock: aws_sdk_bedrockruntime::Client,
+    pub pool: PgPool,
+    pub bedrock: aws_sdk_bedrockruntime::Client,
+    pub summary_model_id: String,
 }
 
 async fn init() -> Result<AppState, Error> {
@@ -33,7 +35,11 @@ async fn init() -> Result<AppState, Error> {
     let bedrock = aws_sdk_bedrockruntime::Client::new(&bedrock_config);
 
     info!("API Lambda ready");
-    Ok(AppState { pool, bedrock })
+    Ok(AppState {
+        pool,
+        bedrock,
+        summary_model_id: config.summary_model_id,
+    })
 }
 
 async fn handler(

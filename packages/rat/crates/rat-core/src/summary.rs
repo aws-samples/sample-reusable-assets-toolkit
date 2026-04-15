@@ -79,3 +79,63 @@ pub async fn generate_summary(
     info!(summary_len = text.len(), "Summary generated");
     Ok(text)
 }
+
+const REPO_SYSTEM_PROMPT: &str = "\
+You summarize git repositories. Given a README, output a clean 2-3 sentence description \
+of what the repository is and what it does.\n\
+\n\
+Rules:\n\
+- Present tense.\n\
+- Mention the main purpose/domain and key technologies.\n\
+- 2-3 sentences, 30-80 words.\n\
+- No preamble, no markdown, no labels, no quotes, no code fences.\n\
+- Base the description only on the README content provided.\n\
+- Do not speculate beyond what is in the README.";
+
+/// Generate a plain-text repository description from README content.
+pub async fn generate_repo_description(
+    client: &Client,
+    model_id: &str,
+    repo_id: &str,
+    readme: &str,
+) -> Result<String, aws_sdk_bedrockruntime::Error> {
+    let trimmed = readme.trim();
+    if trimmed.is_empty() {
+        return Ok(String::new());
+    }
+
+    info!(
+        content_len = trimmed.len(),
+        model_id, repo_id, "Generating repo description"
+    );
+
+    let mut user_message = String::new();
+    let _ = writeln!(user_message, "Repository: {}", repo_id);
+    user_message.push_str("\n--- README ---\n");
+    user_message.push_str(trimmed);
+
+    let response = client
+        .converse()
+        .model_id(model_id)
+        .system(SystemContentBlock::Text(REPO_SYSTEM_PROMPT.to_string()))
+        .messages(
+            Message::builder()
+                .role(ConversationRole::User)
+                .content(ContentBlock::Text(user_message))
+                .build()
+                .unwrap(),
+        )
+        .send()
+        .await?;
+
+    let text = response
+        .output()
+        .and_then(|o| o.as_message().ok())
+        .and_then(|m| m.content().first())
+        .and_then(|c| c.as_text().ok())
+        .cloned()
+        .unwrap_or_default();
+
+    info!(description_len = text.len(), "Repo description generated");
+    Ok(text.trim().to_string())
+}

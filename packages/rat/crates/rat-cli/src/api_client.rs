@@ -57,6 +57,7 @@ pub async fn upsert_repo(
     repo_id: &str,
     branch: &str,
     commit_id: Option<&str>,
+    readme: Option<&str>,
 ) -> Result<()> {
     invoke_api(
         lambda,
@@ -65,6 +66,7 @@ pub async fn upsert_repo(
             repo_id: repo_id.to_string(),
             branch: branch.to_string(),
             commit_id: commit_id.map(|s| s.to_string()),
+            readme: readme.map(|s| s.to_string()),
         }),
     )
     .await?;

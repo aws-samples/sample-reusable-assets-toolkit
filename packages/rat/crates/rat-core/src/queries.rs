@@ -7,6 +7,7 @@ pub struct RepoRow {
     pub repo_id: String,
     pub branch: String,
     pub indexed_commit_id: Option<String>,
+    pub description: Option<String>,
     pub file_count: i64,
     pub snippet_count: i64,
 }
@@ -47,6 +48,27 @@ pub async fn upsert_repo<'e, E: PgExecutor<'e>>(
     .bind(repo_id)
     .bind(branch)
     .bind(commit_id)
+    .execute(executor)
+    .await?;
+    Ok(())
+}
+
+pub async fn update_repo_description<'e, E: PgExecutor<'e>>(
+    executor: E,
+    repo_id: &str,
+    description: &str,
+    embedding: Vector,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE repos
+         SET description = $2,
+             embedding = $3::vector,
+             updated_at = NOW()
+         WHERE repo_id = $1",
+    )
+    .bind(repo_id)
+    .bind(description)
+    .bind(embedding)
     .execute(executor)
     .await?;
     Ok(())
@@ -169,13 +191,14 @@ pub async fn get_repo<'e, E: PgExecutor<'e>>(
         SELECT r.repo_id,
                r.branch,
                r.indexed_commit_id,
+               r.description,
                COUNT(DISTINCT f.id) AS file_count,
                COUNT(s.id) AS snippet_count
         FROM repos r
         LEFT JOIN files f ON f.repo_id = r.repo_id
         LEFT JOIN snippets s ON s.file_id = f.id
         WHERE r.repo_id = $1
-        GROUP BY r.repo_id, r.branch, r.indexed_commit_id
+        GROUP BY r.repo_id, r.branch, r.indexed_commit_id, r.description
         "#,
     )
     .bind(repo_id)
@@ -191,12 +214,13 @@ pub async fn list_repos<'e, E: PgExecutor<'e>>(
         SELECT r.repo_id,
                r.branch,
                r.indexed_commit_id,
+               r.description,
                COUNT(DISTINCT f.id) AS file_count,
                COUNT(s.id) AS snippet_count
         FROM repos r
         LEFT JOIN files f ON f.repo_id = r.repo_id
         LEFT JOIN snippets s ON s.file_id = f.id
-        GROUP BY r.repo_id, r.branch, r.indexed_commit_id
+        GROUP BY r.repo_id, r.branch, r.indexed_commit_id, r.description
         ORDER BY r.repo_id
         "#,
     )

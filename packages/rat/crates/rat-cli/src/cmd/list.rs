@@ -34,11 +34,19 @@ pub async fn handle(profile_name: Option<&str>) -> Result<()> {
         "REPO_ID", "BRANCH", "COMMIT", "FILES", "SNIPPETS"
     );
     for repo in &repos {
-        let commit = repo.indexed_commit_id.as_deref().map(short_commit).unwrap_or("-");
+        let commit = repo
+            .indexed_commit_id
+            .as_deref()
+            .map(short_commit)
+            .unwrap_or("-");
         println!(
             "{:<60}  {:<20}  {:<10}  {:>10}  {:>12}",
             repo.repo_id, repo.branch, commit, repo.file_count, repo.snippet_count
         );
+        match repo.description.as_deref() {
+            Some(d) if !d.trim().is_empty() => println!("{}", d.trim()),
+            _ => println!("(no description)"),
+        }
     }
 
     Ok(())

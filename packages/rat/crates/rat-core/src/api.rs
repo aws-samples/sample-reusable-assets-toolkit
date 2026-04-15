@@ -33,6 +33,10 @@ pub struct RepoUpsertRequest {
     pub branch: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub commit_id: Option<String>,
+    /// Optional README content. If provided, the server generates a
+    /// description + embedding and stores them on the repo row.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub readme: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

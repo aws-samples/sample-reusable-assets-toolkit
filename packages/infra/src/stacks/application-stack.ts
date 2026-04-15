@@ -189,12 +189,13 @@ export class ApplicationStack extends Stack {
         cargoLambdaFlags: ['-p', 'rat-api'],
       },
       memorySize: 512,
-      timeout: Duration.seconds(30),
+      timeout: Duration.seconds(60),
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       environment: {
         RDS_PROXY_ENDPOINT: proxyEndpoint,
         DB_SECRET_ARN: secretArn,
+        SUMMARY_MODEL_ID: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
       },
     });
 

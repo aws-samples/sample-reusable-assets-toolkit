@@ -153,6 +153,7 @@ pub async fn handle(target: &str, force: bool, profile_name: Option<&str>) -> Re
             &repo_id,
             &default_branch,
             None,
+            None,
         )
         .await?;
     }
@@ -185,18 +186,45 @@ pub async fn handle(target: &str, force: bool, profile_name: Option<&str>) -> Re
         return Err(e);
     }
 
-    // 전송 완료 → indexed_commit_id 갱신
-    eprintln!("Finalizing repo state at {}...", short_commit(&commit_id));
+    // README 읽기 (있으면 서버가 description + embedding 생성)
+    let readme = read_readme(&repo_root);
+    if readme.is_some() {
+        eprintln!(
+            "Finalizing repo state at {} (generating description from README)...",
+            short_commit(&commit_id)
+        );
+    } else {
+        eprintln!("Finalizing repo state at {}...", short_commit(&commit_id));
+    }
+
     api_client::upsert_repo(
         &lambda,
         &profile.api_function_arn,
         &repo_id,
         &default_branch,
         Some(&commit_id),
+        readme.as_deref(),
     )
     .await?;
 
     Ok(())
+}
+
+/// Repo root에서 `README.md`를 대소문자 구분 없이 찾아 내용을 반환.
+fn read_readme(repo_root: &Path) -> Option<String> {
+    let entries = std::fs::read_dir(repo_root).ok()?;
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+        if name_str.to_lowercase() == "readme.md" {
+            if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                if !content.trim().is_empty() {
+                    return Some(content);
+                }
+            }
+        }
+    }
+    None
 }
 
 /// Yes/No 프롬프트. `default_yes`로 어느 쪽이 안전 기본값인지 지정.
