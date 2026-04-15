@@ -1,171 +1,186 @@
 # Reusable Asset Toolkit
 
-MCP Server + Skills 기반의 재사용 가능한 코드 자산(Reusable Assets) 검색 및 적용 툴킷.
-AI 코딩 어시스턴트(Kiro, Claude Code 등) 워크플로우 안에서 큐레이션된 코드 자산을 검색하고 현재 프로젝트 컨텍스트에 맞게 적용할 수 있습니다.
+A toolkit for searching and applying reusable code assets, built on MCP Server + Skills.
+Developers can discover curated code assets inside AI coding assistant workflows (Kiro, Claude Code, etc.) and apply them to the current project context.
 
-## 해결하려는 문제
+## Problems We Solve
 
-- 조직 내에 좋은 코드 패턴, 유틸리티, 템플릿이 존재하지만 발견하기 어렵고 재사용이 드묾
-- 위키에 문서화되어 있어도 코딩 시점에서 참조하기 불편
-- 복사-붙여넣기한 코드가 현재 컨텍스트에 맞지 않아 추가 수정 비용 발생
+- Good code patterns, utilities, and templates exist inside the organization but are hard to discover and rarely reused
+- Wiki documentation is inconvenient to reference at coding time
+- Copy-pasted code doesn't fit the current context, incurring rework cost
 
-## 워크스페이스 구조
+## Workspace Layout
 
-Nx + pnpm 워크스페이스로 구성되며, Rust 기반의 `rat` 툴킷과 TypeScript 기반의 AWS CDK 인프라로 나뉩니다.
+An Nx + pnpm workspace. The Rust-based `rat` toolkit and the TypeScript AWS CDK infrastructure live side by side.
 
 ```
 packages/
-├── rat/        # Rust 워크스페이스 (CLI, API, Lambda, 코어 로직)
-├── infra/      # AWS CDK 스택 (network, auth, storage, application)
-└── common/     # 공유 CDK 컨스트럭트
+├── rat/        # Rust workspace (CLI, API, Lambda, core logic)
+├── infra/      # AWS CDK stacks (network, auth, storage, application)
+└── common/     # Shared CDK constructs
 ```
 
-### `rat` 크레이트
+### `rat` crates
 
-| Crate | 설명 |
-|-------|------|
-| `rat-core` | Git 연동, tree-sitter 청킹, DB 모델 등 핵심 로직 |
-| `rat-cli` | 사용자용 CLI (ingest, search, chunk, mcp 등) |
-| `rat-api` | Axum 기반 API 서버 |
-| `rat-lambda` | SQS 메시지를 처리하는 Consumer Lambda |
-| `rat-migration` | Aurora PostgreSQL 마이그레이션 러너 |
+| Crate | Description |
+|-------|-------------|
+| `rat-core` | Core logic: Git integration, tree-sitter chunking, DB models |
+| `rat-cli` | User-facing CLI (ingest, search, chunk, mcp, etc.) |
+| `rat-api` | Axum-based API server |
+| `rat-lambda` | Consumer Lambda that processes SQS messages |
+| `rat-migration` | Aurora PostgreSQL migration runner |
 
-### `rat-cli` 명령어
+### `rat-cli` commands
 
-- `configure`, `login` — 설정 및 Midway 인증
-- `ingest` — 로컬 Git 레포를 파싱·청킹하여 API로 전송 (증분/`--force` 지원)
-- `chunk` — tree-sitter 기반 파일 청킹 결과를 로컬에서 미리보기
-- `list`, `search`, `status` — 인덱싱된 레포/스니펫 조회 및 하이브리드 검색
-- `purge` — 레포 전체 데이터 삭제
-- `mcp` — MCP 서버 모드 실행
+- `configure`, `login` — profile setup and Cognito authentication
+- `ingest` — parse and chunk a local Git repo, then ship it to the API (incremental / `--force`)
+- `chunk` — preview tree-sitter chunking output locally
+- `list`, `search`, `status` — browse indexed repos/snippets and run hybrid search
+- `purge` — delete all data for a repo
+- `mcp` — run as an MCP server
 
-### `infra` 스택
+### `infra` stacks
 
-| Stack | 설명 |
-|-------|------|
-| `network-stack` | VPC, 서브넷, 엔드포인트 |
-| `auth-stack` | 인증 관련 리소스 |
-| `storage-stack` | Aurora PostgreSQL(pgvector), SQS |
-| `application-stack` | API Gateway, Lambda, MCP 서버 배포 |
+| Stack | Description |
+|-------|-------------|
+| `network-stack` | VPC, subnets, endpoints |
+| `auth-stack` | Authentication resources |
+| `storage-stack` | Aurora PostgreSQL (pgvector), SQS |
+| `application-stack` | API Gateway, Lambda, MCP server deployment |
 
-## 데이터 수집 파이프라인
+## Ingestion Pipeline
 
 ```
-로컬 Git 레포 → rat-cli ingest (tree-sitter 파싱 + 청킹)
-             → API Gateway → SQS
-             → rat-lambda (LLM 설명 생성 + 임베딩)
-             → Aurora PostgreSQL (pgvector)
+Local Git repo → rat-cli ingest (tree-sitter parse + chunk)
+              → API Gateway → SQS
+              → rat-lambda (LLM description + embedding)
+              → Aurora PostgreSQL (pgvector)
 ```
 
-상세 설계는 [packages/rat/README.md](./packages/rat/README.md)를 참고하세요.
+For design details see [packages/rat/README.md](./packages/rat/README.md).
 
-### tree-sitter 기반 코드 청킹
+### tree-sitter based code chunking
 
-tree-sitter로 소스 코드를 AST로 파싱하고 언어별로 의미 있는 단위(함수, 클래스, 구조체 등)로 분할합니다.
+tree-sitter parses source files into an AST and splits them by language into meaningful units (functions, classes, structs, etc.).
 
-| 언어 | 추출 단위 |
-|------|----------|
+| Language | Extracted nodes |
+|----------|-----------------|
 | Rust | `function_item`, `impl_item`, `struct_item`, `enum_item`, `trait_item`, `macro_definition`, `type_item` |
 | TypeScript/TSX | `function_declaration`, `class_declaration`, `export_statement`, `lexical_declaration` |
-| JavaScript | 동일 (+ `require()` 패턴 import 인식) |
+| JavaScript | Same as TS (plus `require()`-style import detection) |
 | Python | `function_definition`, `class_definition`, `decorated_definition` |
 | Go | `function_declaration`, `method_declaration`, `type_declaration` |
 | Java | `method_declaration`, `class_declaration`, `interface_declaration`, `enum_declaration` |
 
-청킹 동작:
+Chunking behavior:
 
-1. **최상위 선언 추출**: 언어별 타겟 노드를 AST에서 추출하여 개별 청크로 생성
-2. **어트리뷰트/데코레이터 병합**: `#[derive]`, `@Injectable()`, `@dataclass` 등 선언 위의 어트리뷰트를 해당 청크에 포함
-3. **Doc 주석 병합**: 선언 바로 위의 doc 주석(`///`, `/** */`, `#`)을 해당 청크에 포함
-4. **Import 필터링**: 각 청크에서 실제 사용하는 import만 선별
-5. **커버리지 보완**: 남은 코드를 별도 청크로 수집 (200줄 초과 시 빈 줄 기준 분할)
+1. **Top-level declaration extraction**: each target node becomes its own chunk.
+2. **Attribute/decorator merging**: attributes sitting above a declaration (`#[derive]`, `@Injectable()`, `@dataclass`, …) are folded into the chunk.
+3. **Doc comment merging**: doc comments directly above a declaration (`///`, `/** */`, `#`) are folded into the chunk.
+4. **Import filtering**: only the imports each chunk actually uses are kept on it.
+5. **Coverage fill**: code not covered by any extracted chunk is collected into separate chunks (split on blank lines when it exceeds 200 lines).
 
 ```bash
-rat chunk <파일경로>
+rat chunk <path/to/file>
 ```
 
-### 지원 저장소 타입
+### Supported repository types
 
-현재는 **Git 저장소만** 지원합니다. `git2`(libgit2 바인딩)로 tracked 파일 목록을 추출하여 `.gitignore`에 맞게 대상 파일을 결정합니다. 일반 디렉토리 및 다른 VCS는 아직 지원하지 않습니다.
+Only **Git repositories** are supported today. `git2` (libgit2 bindings) pulls the tracked file list so that `.gitignore` rules naturally decide what gets indexed. Plain directories and other VCS backends are not supported yet.
 
-## 검색 및 MCP 노출
+## Search & MCP Surface
 
-- 벡터(임베딩) + 키워드 기반 하이브리드 검색
-- `rat search` CLI와 `rat mcp` MCP 서버를 통해 동일한 검색 기능 제공
-- MCP 도구: `search`, `search_repos`, `list_repos`
+- Hybrid search combining vector (embedding) and keyword ranking
+- The same search is exposed through both the `rat search` CLI and the `rat mcp` MCP server
+- MCP tools: `search`, `search_repos`, `list_repos`
 
-AI 어시스턴트는 MCP 도구를 통해 대화 컨텍스트에 관련 스니펫을 주입하여 검증된 패턴 기반 코드 생성을 유도합니다.
+AI assistants call these MCP tools to inject relevant snippets into the conversation context, grounding code generation in validated patterns.
 
-## 접근 제어
+## Access Control
 
-MCP 서버 및 API는 Cognito 인증을 통해 접근을 제어합니다.
+Both the MCP server and the API enforce Cognito authentication.
 
-## 실행 방법
+## Running
 
-`rat` CLI는 `packages/rat`에서 빌드됩니다. 빌드된 바이너리는 `packages/rat/target/release/rat`에 생성됩니다.
+The `rat` CLI is built from `packages/rat`. The release binary lands at `packages/rat/target/release/rat`.
 
 ```sh
-# 빌드
+# Build
 cargo build --release --manifest-path packages/rat/Cargo.toml
 ```
 
-### 초기 설정
+### Initial setup
 
 ```sh
-# 1. 서버 엔드포인트/프로파일 설정
+# 1. Configure server endpoints and profile
 rat configure
+```
 
-# 2. Cognito 로그인 (브라우저 기반 OIDC PKCE)
+![rat configure](./docs/configure.gif)
+
+To keep multiple profiles, pass `--profile <name>` to any command (default: `default`).
+
+```sh
+# 2. Log in via Cognito (browser-based OIDC PKCE)
 rat login
 ```
+![rat login](./docs/login.gif)
 
-프로파일을 여러 개 운영하려면 모든 명령에 `--profile <name>`을 붙이면 됩니다 (기본값: `default`).
-
-### 레포 인덱싱 및 검색
+### Indexing and searching
 
 ```sh
-# 현재 디렉토리(Git 레포)를 인덱싱
+# Ingest the current directory (must be a Git repo)
 rat ingest .
 
-# 변경 여부와 무관하게 전체 재인덱싱
+# Force full re-index regardless of state
 rat ingest . --force
-
-# 인덱싱된 레포 목록
+```
+![rat ingest](./docs/ingest.gif)
+```sh
+# List indexed repos
 rat list
+```
+![rat list](./docs/list.gif)
 
-# SQS 큐 상태 확인
+```sh
+# Check SQS queue status
 rat status
+```
+![rat status](./docs/status.gif)
 
-# 코드 스니펫 검색 (기본 scope=code)
-rat search "vector search hybrid"
+```sh
+# Search code snippets (default scope=code)
+rat search "sqs cdk"
 
-# 레포 단위 검색
-rat search "payments service" --scope repo
+# Repo-level search
+rat search "unsturctured docuemnt analytics service" --scope repo
 
-# 특정 레포로 범위 제한
+# Restrict to a single repo
 rat search "retry logic" --repo-id git@gitlab.example.com:team/my-service.git
 
-# 레포 전체 데이터 삭제
+# Purge all data for a repo
 rat purge <repo_id>
 ```
+![rat search](./docs/search.gif) 
 
-### tree-sitter 청킹 미리보기
+
+### Preview tree-sitter chunking
 
 ```sh
 rat chunk path/to/file.ts
 ```
 
-## MCP 서버 설정
+## MCP Server Configuration
 
-`rat mcp` 는 stdio 기반 MCP 서버로 동작하며, 다음 도구를 노출합니다.
+`rat mcp` runs as a stdio MCP server and exposes the following tools:
 
-- `search` — 코드 스니펫/문서 하이브리드 검색
-- `search_repos` — 레포지토리 검색
-- `list_repos` — 인덱싱된 레포 목록
+- `search` — hybrid search over code snippets and docs
+- `search_repos` — repository search
+- `list_repos` — list indexed repositories
 
 ### Claude Code
 
-`~/.claude.json` 또는 프로젝트 `.mcp.json`에 추가합니다.
+Add to `~/.claude.json` or the project-level `.mcp.json`.
 
 ```json
 {
@@ -178,11 +193,11 @@ rat chunk path/to/file.ts
 }
 ```
 
-프로파일을 지정하려면 `args`에 `["mcp", "--profile", "<name>"]`을 넣으면 됩니다.
+To pin a profile, set `args` to `["mcp", "--profile", "<name>"]`.
 
 ### Kiro
 
-워크스페이스 단위는 `.kiro/settings/mcp.json`, 사용자 단위는 `~/.kiro/settings/mcp.json`에 등록합니다. 두 파일이 모두 있으면 워크스페이스 설정이 우선하며 병합됩니다.
+Register at the workspace level in `.kiro/settings/mcp.json`, or at the user level in `~/.kiro/settings/mcp.json`. If both exist, the workspace config takes precedence and the two are merged.
 
 ```json
 {
@@ -195,6 +210,10 @@ rat chunk path/to/file.ts
 }
 ```
 
-### 주의
+Tool names listed in `autoApprove` are executed without per-call confirmation. To pin a profile, change `args` to `["mcp", "--profile", "<name>"]`.
 
-MCP 호출 전에 `rat login`으로 Cognito 토큰을 먼저 발급받아야 합니다. 토큰이 만료되면 검색이 실패하므로 다시 로그인하세요.
+![rat mcp](./docs/mcp.svg) 
+
+### Note
+
+Run `rat login` to obtain a Cognito token **before** invoking MCP tools. If the token expires, searches will fail — log in again.
