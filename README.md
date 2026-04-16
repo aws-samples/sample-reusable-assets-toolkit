@@ -175,6 +175,13 @@ rat login
 ```
 ![rat login](./docs/login.gif)
 
+```sh
+# 3. Initialize the database schema (required once after first CDK deployment)
+rat migration
+```
+
+`rat migration` invokes the Migration Lambda function to run database schema migrations on the Aurora PostgreSQL instance. This is a one-time step needed before any other commands.
+
 ### Indexing and searching
 
 ```sh
