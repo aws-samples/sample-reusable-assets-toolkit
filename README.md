@@ -155,7 +155,7 @@ After deployment, note the Cognito resource values for `rat configure`. The rema
 rat configure
 ```
 
-`rat configure` prompts for the following values. Use these for the deployed environment (authenticated via Midway → Cognito):
+`rat configure` prompts for the following values. Use these for the deployed environment (authenticated via Midway → Cognito). Access is restricted to members of the `aws-apj-pace` POSIX group.
 
 | Field | Value |
 |-------|-------|
