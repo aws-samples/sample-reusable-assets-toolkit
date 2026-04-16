@@ -129,12 +129,41 @@ Optionally, copy it to a directory on your `PATH` so you can run `rat` from anyw
 sudo cp rat /usr/local/bin/
 ```
 
+### Infrastructure deployment
+
+Deploy the AWS CDK stacks before using the CLI. The stacks must be deployed in dependency order, but `--all` handles this automatically.
+
+```sh
+# 1. Install dependencies
+pnpm install
+
+# 2. Bootstrap CDK (one-time per AWS account/region)
+pnpm nx bootstrap @idp-code/infra
+
+# 3. Deploy all stacks
+pnpm nx deploy @idp-code/infra --all
+```
+
+Four stacks are deployed in order: **NETWORK → STORAGE → AUTH → APPLICATION**.
+
+After deployment, note the Cognito resource values for `rat configure`. The remaining resource endpoints are resolved dynamically via SSM parameters.
+
 ### Initial setup
 
 ```sh
 # 1. Configure server endpoints and profile
 rat configure
 ```
+
+`rat configure` prompts for the following values. Use these for the deployed environment (authenticated via Midway → Cognito):
+
+| Field | Value |
+|-------|-------|
+| AWS Region | `ap-northeast-2` |
+| Cognito Domain | `idp-code-975050239358.auth.ap-northeast-2.amazoncognito.com` |
+| Cognito App Client ID | `752a7ag3fiuidq2nip3sb8i23o` |
+| Cognito Identity Pool ID | `ap-northeast-2:8d208bf4-0c5f-463a-85d5-7b3b412639cb` |
+| Cognito User Pool ID | `ap-northeast-2_HxrCJOnfN` |
 
 ![rat configure](./docs/configure.gif)
 
