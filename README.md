@@ -1,13 +1,20 @@
 # Reusable Asset Toolkit
 
-A toolkit for searching and applying reusable code assets, built on MCP Server + Skills.
-Developers can discover curated code assets inside AI coding assistant workflows (Kiro, Claude Code, etc.) and apply them to the current project context.
+A toolkit that helps developers discover and reuse code assets across the organization.
+
+Source code is parsed into an AST via tree-sitter, chunked into meaningful units, and enriched with LLM-generated metadata. The resulting index powers hybrid search (vector + keyword) exposed through a CLI and an MCP server, so developers can find relevant code directly inside AI coding assistants (Kiro, Claude Code, etc.).
 
 ## Problems We Solve
 
 - Good code patterns, utilities, and templates exist inside the organization but are hard to discover and rarely reused
 - Wiki documentation is inconvenient to reference at coding time
-- Copy-pasted code doesn't fit the current context, incurring rework cost
+- Searching for existing code requires leaving the coding workflow
+
+## How It Helps
+
+- Code is automatically chunked and indexed with LLM-generated descriptions, making it searchable by intent rather than exact keywords
+- MCP integration lets AI coding assistants search and retrieve code directly — developers can discover snippets and ask about implementation ideas without leaving their workflow
+- Hybrid search (vector + keyword) surfaces relevant snippets even from unfamiliar repositories
 
 ## Workspace Layout
 
@@ -43,10 +50,10 @@ packages/
 
 | Stack | Description |
 |-------|-------------|
-| `network-stack` | VPC, subnets, endpoints |
-| `auth-stack` | Authentication resources |
-| `storage-stack` | Aurora PostgreSQL (pgvector), SQS |
-| `application-stack` | API Gateway, Lambda, MCP server deployment |
+| `network-stack` | VPC, NAT Gateway, Flow Logs |
+| `auth-stack` | Cognito User Pool, Identity Pool, IAM roles |
+| `storage-stack` | Aurora PostgreSQL Serverless v2 (pgvector), RDS Proxy, KMS |
+| `application-stack` | Lambda functions (API, Ingest Consumer, Migration), SQS |
 
 ## Ingestion Pipeline
 
@@ -194,13 +201,23 @@ rat migration
 ### Indexing and searching
 
 ```sh
-# Ingest the current directory (must be a Git repo)
+# Ingest a Git repo (detects the repo root automatically)
+# First run performs a full index; subsequent runs are incremental,
+# comparing Git tree hashes and only updating changed files
 rat ingest .
 
 # Force full re-index regardless of state
 rat ingest . --force
 ```
 ![rat ingest](./docs/ingest.gif)
+
+To exclude files from indexing, create a `.ratignore` file in the repository root. The format is the same as `.gitignore`.
+
+```
+**/fixtures/
+**/tests/
+```
+
 ```sh
 # List indexed repos
 rat list
