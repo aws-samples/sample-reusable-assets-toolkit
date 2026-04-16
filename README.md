@@ -109,6 +109,26 @@ The `rat` CLI is built from `packages/rat`. The release binary lands at `package
 cargo build --release --manifest-path packages/rat/Cargo.toml
 ```
 
+Pre-built binaries are also available:
+
+| Platform | Download |
+|----------|----------|
+| macOS (Apple Silicon) | [GitLab Package Registry](https://gitlab.aws.dev/kr-prototyping/idp-code/-/packages/44301) |
+
+After downloading, rename the binary, make it executable, and remove the quarantine attribute (required for binaries downloaded via a web browser):
+
+```sh
+mv rat-aarch64-apple-darwin rat
+chmod +x rat
+xattr -d com.apple.quarantine rat
+```
+
+Optionally, copy it to a directory on your `PATH` so you can run `rat` from anywhere:
+
+```sh
+sudo cp rat /usr/local/bin/
+```
+
 ### Initial setup
 
 ```sh
