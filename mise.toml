@@ -12,3 +12,36 @@ pnpm nx run @idp-code/infra:deploy $stack --output-style=stream
 [tasks.checkov]
 description = "Run checkov on CDK synthesized CloudFormation templates"
 run = "pnpm nx run @idp-code/infra:synth && checkov --skip-download -d dist/packages/infra/cdk.out"
+
+[tasks."frontend:runtime-config"]
+description = "Fetch Cognito + API SSM params and write packages/frontend/public/runtime-config.json"
+run = '''
+set -eu
+
+user_pool_id=$(aws ssm get-parameter --name /idp-code/cognito/user-pool-id --query 'Parameter.Value' --output text)
+web_client_id=$(aws ssm get-parameter --name /idp-code/cognito/web-client-id --query 'Parameter.Value' --output text)
+identity_pool_id=$(aws ssm get-parameter --name /idp-code/cognito/web-identity-pool-id --query 'Parameter.Value' --output text)
+function_arn=$(aws ssm get-parameter --name /idp-code/api/function-arn --query 'Parameter.Value' --output text)
+
+mkdir -p packages/frontend/public
+
+jq -n \
+  --arg region "$AWS_REGION" \
+  --arg userPoolId "$user_pool_id" \
+  --arg userPoolClientId "$web_client_id" \
+  --arg identityPoolId "$identity_pool_id" \
+  --arg functionArn "$function_arn" \
+  '{
+    cognito: {
+      region: $region,
+      userPoolId: $userPoolId,
+      userPoolClientId: $userPoolClientId,
+      identityPoolId: $identityPoolId
+    },
+    api: {
+      functionArn: $functionArn
+    }
+  }' > packages/frontend/public/runtime-config.json
+
+echo "Wrote packages/frontend/public/runtime-config.json"
+'''
