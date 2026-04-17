@@ -11,6 +11,7 @@ import { Construct } from 'constructs';
 
 export class AuthStack extends Stack {
   public readonly authenticatedRole: iam.IRole;
+  public readonly userPool: cognito.UserPool;
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
@@ -76,6 +77,7 @@ export class AuthStack extends Stack {
     });
 
     this.authenticatedRole = identityPool.authenticatedRole;
+    this.userPool = userPool;
 
     // Grant authenticated role: sqs:SendMessage on IngestQueue
     identityPool.authenticatedRole.addToPrincipalPolicy(

@@ -3,6 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/infra/src",
   "projectType": "application",
+  "implicitDependencies": ["frontend"],
   "tags": [],
   "metadata": {
     "generator": "ts#infra"

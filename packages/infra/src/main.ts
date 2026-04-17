@@ -1,5 +1,6 @@
 import { ApplicationStack } from './stacks/application-stack.js';
 import { AuthStack } from './stacks/auth-stack.js';
+import { FrontendStack } from './stacks/frontend-stack.js';
 import { NetworkStack } from './stacks/network-stack.js';
 import { StorageStack } from './stacks/storage-stack.js';
 import { App } from ':idp-code/common-constructs';
@@ -34,5 +35,13 @@ const application = new ApplicationStack(app, 'IDP-CODE-APPLICATION', {
 });
 application.addDependency(auth);
 application.addDependency(storage);
+
+const frontend = new FrontendStack(app, 'IDP-CODE-FRONTEND', {
+  env,
+  crossRegionReferences: true,
+  userPool: auth.userPool,
+});
+frontend.addDependency(auth);
+frontend.addDependency(application);
 
 app.synth();
