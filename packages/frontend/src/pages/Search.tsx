@@ -7,7 +7,7 @@ import {
   on,
   Show,
 } from 'solid-js';
-import { useSearchParams } from '@solidjs/router';
+import { A, useSearchParams } from '@solidjs/router';
 import { Header } from '@/components/Header';
 import { SearchInput } from '@/components/SearchInput';
 import {
@@ -117,6 +117,53 @@ const Results: Component<{ data: Data | null }> = (props) => {
   );
 };
 
+/**
+ * Backend snippet descriptions follow a fixed 3-line format:
+ *   SUMMARY: ...
+ *   IDENTIFIERS: ...
+ *   KEYWORDS: ...
+ * Parse into structured fields. IDENTIFIERS/KEYWORDS primarily exist to
+ * boost FTS retrieval, but KEYWORDS are useful as display tags.
+ */
+type ParsedDescription = {
+  summary: string;
+  identifiers: string[];
+  keywords: string[];
+};
+
+const splitList = (s: string): string[] =>
+  s.split(',').map((x) => x.trim()).filter(Boolean);
+
+const parseDescription = (description: string): ParsedDescription => {
+  let summary = '';
+  let identifiers: string[] = [];
+  let keywords: string[] = [];
+  for (const line of description.split('\n')) {
+    const m =
+      line.match(/^\s*SUMMARY:\s*(.*)$/) ??
+      line.match(/^\s*IDENTIFIERS:\s*(.*)$/) ??
+      line.match(/^\s*KEYWORDS:\s*(.*)$/);
+    if (!m) continue;
+    const value = m[1];
+    if (line.match(/^\s*SUMMARY:/)) summary = value.trim();
+    else if (line.match(/^\s*IDENTIFIERS:/)) identifiers = splitList(value);
+    else if (line.match(/^\s*KEYWORDS:/)) keywords = splitList(value);
+  }
+  // Fallback: if no SUMMARY label found, use the whole description.
+  if (!summary && !identifiers.length && !keywords.length) {
+    summary = description.trim();
+  }
+  return { summary, identifiers, keywords };
+};
+
+const fileHref = (r: SearchResult): string => {
+  let url = `/file?repo=${encodeURIComponent(r.repo_id)}&path=${encodeURIComponent(r.source_path)}`;
+  if (r.start_line != null && r.end_line != null) {
+    url += `&start=${r.start_line}&end=${r.end_line}`;
+  }
+  return url;
+};
+
 const BAR_CELLS = 8;
 
 const relevanceBar = (relative: number): string => {
@@ -164,7 +211,7 @@ const ReposSection: Component<{ repos: RepoSearchResult[] }> = (props) => {
                   </span>
                 </div>
                 <Show when={repo.description}>
-                  <p class="mt-1 line-clamp-2 text-sm text-gray-500">
+                  <p class="mt-1 text-sm text-gray-500">
                     {repo.description}
                   </p>
                 </Show>
@@ -194,14 +241,20 @@ const LoadingStripe: Component = () => (
 
 const ResultCard: Component<{ result: SearchResult }> = (props) => {
   const isCode = () => props.result.source_type === 'code';
+  const parsed = () => parseDescription(props.result.description);
 
   return (
     <article class="rounded border border-gray-200">
       {/* Header */}
       <div class="flex items-center justify-between gap-4 border-b border-gray-200 px-3 py-2 font-mono text-xs">
         <div class="flex min-w-0 items-center gap-2">
-          <span class="font-bold">{props.result.repo_id}</span>
-          <span class="truncate text-gray-500">{props.result.source_path}</span>
+          <span class="flex-none font-bold">{props.result.repo_id}</span>
+          <A
+            href={fileHref(props.result)}
+            class="truncate text-gray-500 hover:text-gray-900 hover:underline"
+          >
+            {props.result.source_path}
+          </A>
         </div>
         <div class="flex flex-none items-center gap-3 text-gray-400">
           <Show when={props.result.language}>
@@ -216,10 +269,23 @@ const ResultCard: Component<{ result: SearchResult }> = (props) => {
       </div>
 
       {/* Description */}
-      <Show when={props.result.description}>
+      <Show when={parsed().summary}>
         <p class="border-b border-gray-100 px-3 py-2 text-xs italic text-gray-500">
-          {props.result.description}
+          {parsed().summary}
         </p>
+      </Show>
+
+      {/* Keyword tags */}
+      <Show when={parsed().keywords.length > 0}>
+        <div class="flex flex-wrap gap-1 border-b border-gray-100 px-3 py-2">
+          <For each={parsed().keywords}>
+            {(kw) => (
+              <span class="rounded border border-gray-200 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">
+                {kw}
+              </span>
+            )}
+          </For>
+        </div>
       </Show>
 
       {/* Body */}

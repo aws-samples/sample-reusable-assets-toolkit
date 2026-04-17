@@ -4,6 +4,7 @@ import { Route, Router } from '@solidjs/router';
 import { useAuth } from 'oidc-provider-solid';
 import Landing from '@/pages/Landing';
 import SearchPage from '@/pages/Search';
+import FilePage from '@/pages/File';
 
 const App: Component = () => {
   const { isLoading } = useAuth();
@@ -20,6 +21,7 @@ const App: Component = () => {
       <Router>
         <Route path="/" component={Landing} />
         <Route path="/search" component={SearchPage} />
+        <Route path="/file" component={FilePage} />
         <Route path="*" component={Landing} />
       </Router>
     </Show>
