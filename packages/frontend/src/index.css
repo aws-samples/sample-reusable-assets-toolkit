@@ -1,1 +1,58 @@
 @import 'tailwindcss';
+
+/* Prism minimal-colour theme — 3 muted accents + grayscale base. */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #9ca3af; /* gray-400 */
+  font-style: italic;
+}
+
+.token.keyword,
+.token.selector,
+.token.important,
+.token.rule,
+.token.atrule,
+.token.tag,
+.token.attr-name,
+.token.namespace {
+  color: #3730a3; /* indigo-800 — control flow / declarations */
+  font-weight: 600;
+}
+
+.token.string,
+.token.char,
+.token.attr-value,
+.token.regex,
+.token.url {
+  color: #065f46; /* emerald-800 — literal strings */
+}
+
+.token.number,
+.token.boolean,
+.token.constant,
+.token.symbol {
+  color: #9a3412; /* orange-800 — primitives */
+}
+
+.token.function,
+.token.class-name {
+  color: #1f2937; /* gray-800 — identifiers stay neutral */
+}
+
+.token.builtin {
+  color: #1f2937; /* gray-800 */
+  font-weight: 600;
+}
+
+.token.operator,
+.token.punctuation,
+.token.entity {
+  color: #6b7280; /* gray-500 */
+}
+
+.token.deleted,
+.token.inserted {
+  color: #6b7280; /* gray-500 */
+}

@@ -1,7 +1,9 @@
 import type { Component } from 'solid-js';
 import { Show } from 'solid-js';
+import { Route, Router } from '@solidjs/router';
 import { useAuth } from 'oidc-provider-solid';
 import Landing from '@/pages/Landing';
+import SearchPage from '@/pages/Search';
 
 const App: Component = () => {
   const { isLoading } = useAuth();
@@ -15,7 +17,11 @@ const App: Component = () => {
         </div>
       }
     >
-      <Landing />
+      <Router>
+        <Route path="/" component={Landing} />
+        <Route path="/search" component={SearchPage} />
+        <Route path="*" component={Landing} />
+      </Router>
     </Show>
   );
 };

@@ -1,10 +1,14 @@
 import type { Component } from 'solid-js';
 import { createResource, createSignal, For, Show } from 'solid-js';
+import { useNavigate } from '@solidjs/router';
 import { useAuth } from 'oidc-provider-solid';
+import { Header } from '@/components/Header';
+import { SearchInput } from '@/components/SearchInput';
 import { listRepos } from '@/lib/rat-api';
 
 const Landing: Component = () => {
-  const { user, isAuthenticated, login, logout } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [query, setQuery] = createSignal('');
 
   const [repos] = createResource(
@@ -19,60 +23,23 @@ const Landing: Component = () => {
   const submit = () => {
     const q = query().trim();
     if (!q) return;
-    // TODO: navigate to /search?q=... once router is added
-    console.log('search', { q });
+    navigate(`/search?q=${encodeURIComponent(q)}`);
   };
 
   return (
     <div class="min-h-screen flex flex-col bg-white text-gray-900">
-      {/* Header */}
-      <header class="flex items-center justify-between border-b border-gray-200 px-6 py-3">
-        <div class="flex items-center gap-1.5 font-mono text-sm font-bold">
-          <span class="text-base grayscale" aria-hidden="true">🐀</span>
-          rat
-        </div>
-        <div class="flex items-center gap-4 text-xs">
-          <Show
-            when={isAuthenticated()}
-            fallback={
-              <button
-                onClick={login}
-                class="font-mono rounded border border-gray-900 px-3 py-1 hover:bg-gray-900 hover:text-white"
-              >
-                Sign in
-              </button>
-            }
-          >
-            <span class="font-mono text-gray-500">
-              {(user()?.profile.email as string | undefined) ?? ''}
-            </span>
-            <button
-              onClick={logout}
-              class="font-mono text-gray-500 hover:text-gray-900"
-            >
-              Sign out
-            </button>
-          </Show>
-        </div>
-      </header>
+      <Header />
 
-      {/* Main */}
       <main class="flex flex-1 items-start justify-center px-6 py-24">
         <div class="w-full max-w-2xl space-y-12">
-          {/* Search */}
-          <div class="flex items-center rounded border border-gray-300 bg-white focus-within:border-gray-900">
-            <input
-              type="text"
-              value={query()}
-              onInput={(e) => setQuery(e.currentTarget.value)}
-              onKeyDown={(e) => e.key === 'Enter' && submit()}
-              placeholder="Search repos, code, docs…"
-              autofocus
-              class="flex-1 bg-transparent px-4 py-3 font-mono text-sm outline-none placeholder:text-gray-400"
-            />
-          </div>
+          <SearchInput
+            value={query()}
+            onInput={setQuery}
+            onSubmit={submit}
+            autofocus
+            class="text-base"
+          />
 
-          {/* Browse */}
           <section class="space-y-3">
             <h2 class="text-xs uppercase tracking-wider text-gray-500">
               browse
@@ -136,9 +103,7 @@ const Landing: Component = () => {
 const RepoListSkeleton: Component = () => (
   <ul class="space-y-2">
     <For each={[0, 1, 2]}>
-      {() => (
-        <li class="h-6 animate-pulse rounded bg-gray-100" />
-      )}
+      {() => <li class="h-6 animate-pulse rounded bg-gray-100" />}
     </For>
   </ul>
 );

@@ -17,6 +17,7 @@
     "@aws/nx-plugin": "0.97.0",
     "@kobalte/core": "^0.13.11",
     "@solidjs/router": "^0.16.1",
+    "@types/prismjs": "^1.26.6",
     "aws-cdk": "2.1113.0",
     "aws-cdk-lib": "2.244.0",
     "cargo-lambda-cdk": "^0.0.36",
@@ -25,6 +26,7 @@
     "esbuild": "0.27.4",
     "oidc-client-ts": "^3.5.0",
     "oidc-provider-solid": "^0.1.11",
+    "prismjs": "^1.30.0",
     "source-map-support": "0.5.21",
     "tailwind-merge": "^3.5.0"
   },
