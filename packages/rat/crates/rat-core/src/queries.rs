@@ -13,6 +13,15 @@ pub struct RepoRow {
 }
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+pub struct FileRow {
+    pub id: i64,
+    pub repo_id: String,
+    pub source_path: String,
+    pub content: String,
+    pub language: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct SnippetRow {
     pub id: i64,
     pub repo_id: String,
@@ -180,6 +189,24 @@ pub async fn count_repo_contents<'e, E: PgExecutor<'e>>(
         deleted_files,
         deleted_snippets,
     }))
+}
+
+pub async fn get_file<'e, E: PgExecutor<'e>>(
+    executor: E,
+    repo_id: &str,
+    source_path: &str,
+) -> Result<Option<FileRow>, sqlx::Error> {
+    sqlx::query_as::<_, FileRow>(
+        r#"
+        SELECT id, repo_id, source_path, content, language
+        FROM files
+        WHERE repo_id = $1 AND source_path = $2
+        "#,
+    )
+    .bind(repo_id)
+    .bind(source_path)
+    .fetch_optional(executor)
+    .await
 }
 
 pub async fn get_repo<'e, E: PgExecutor<'e>>(

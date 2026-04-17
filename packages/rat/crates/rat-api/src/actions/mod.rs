@@ -1,3 +1,4 @@
+pub mod file_get;
 pub mod list;
 pub mod purge;
 pub mod repo_get;

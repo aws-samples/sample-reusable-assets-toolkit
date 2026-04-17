@@ -53,6 +53,7 @@ async fn handler(
         ApiRequest::RepoUpsert(req) => actions::repo_upsert::handle_repo_upsert(state, req).await.map(ApiResponse::RepoUpsert),
         ApiRequest::RepoGet(req) => actions::repo_get::handle_repo_get(state, req).await.map(ApiResponse::RepoGet),
         ApiRequest::RepoSearch(req) => actions::repo_search::handle_repo_search(state, req).await.map(ApiResponse::RepoSearch),
+        ApiRequest::FileGet(req) => actions::file_get::handle_file_get(state, req).await.map(ApiResponse::FileGet),
     }
 }
 
