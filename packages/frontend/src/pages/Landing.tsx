@@ -3,13 +3,14 @@ import { createResource, createSignal, For, Show } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import { useAuth } from 'oidc-provider-solid';
 import { Header } from '@/components/Header';
-import { SearchInput } from '@/components/SearchInput';
+import { SearchInput, type SearchMode } from '@/components/SearchInput';
 import { listRepos } from '@/lib/rat-api';
 
 const Landing: Component = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [query, setQuery] = createSignal('');
+  const [mode, setMode] = createSignal<SearchMode>('keyword');
 
   const [repos] = createResource(
     () => isAuthenticated(),
@@ -23,7 +24,9 @@ const Landing: Component = () => {
   const submit = () => {
     const q = query().trim();
     if (!q) return;
-    navigate(`/search?q=${encodeURIComponent(q)}`);
+    const params = new URLSearchParams({ q });
+    if (mode() === 'ai') params.set('mode', 'ai');
+    navigate(`/search?${params.toString()}`);
   };
 
   return (
@@ -36,6 +39,8 @@ const Landing: Component = () => {
             value={query()}
             onInput={setQuery}
             onSubmit={submit}
+            mode={mode()}
+            onModeChange={setMode}
             autofocus
             class="text-base"
           />

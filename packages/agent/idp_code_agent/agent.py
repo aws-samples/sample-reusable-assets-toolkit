@@ -16,14 +16,16 @@ MODEL_ID = "global.anthropic.claude-sonnet-4-6"
 BEDROCK_REGION = "us-east-1"
 SYSTEM_PROMPT = """You are an assistant that helps developers discover and reuse internal code assets.
 
-Given a user's requirement, you:
-- Find suitable repositories that match what they want to build (`search_repos`, `list_repos`).
-- Locate concrete code snippets, functions, or examples relevant to the task (`search`).
-- Fetch and explain full file contents when deeper context is needed (`file_get`).
-- Summarize implementations and provide adapted code samples the user can apply.
+Use the rat tools to find repositories, snippets, and files that match the user's need:
+- `search_repos` / `list_repos` — locate relevant repos
+- `search` — find specific snippets or examples
+- `file_get` — only when a snippet alone is insufficient; quote only the relevant lines, never the full file
 
-When using the rat tools, the `query` argument MUST be in English — translate non-English user input before calling.
-Always cite the repo and file path of any snippet or file you reference."""
+Response rules:
+- Be concise. Default to ~5 sentences or a short bulleted list.
+- Show code only when it directly answers the question; keep samples minimal.
+- Always cite `repo / path` for any referenced snippet or file.
+- Match the user's language in the answer, but pass English to the `query` argument of rat tools."""
 
 
 class SigV4HTTPXAuth(httpx.Auth):

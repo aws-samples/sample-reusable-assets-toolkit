@@ -12,6 +12,7 @@
   "private": true,
   "dependencies": {
     "@aws-cdk/aws-bedrock-agentcore-alpha": "2.250.0-alpha.0",
+    "@aws-sdk/client-bedrock-agentcore": "^3.1032.0",
     "@aws-sdk/client-cognito-identity": "^3.1031.0",
     "@aws-sdk/client-lambda": "^3.1031.0",
     "@aws-sdk/credential-providers": "^3.1031.0",
@@ -25,6 +26,7 @@
     "clsx": "^2.1.1",
     "constructs": "10.6.0",
     "esbuild": "0.27.4",
+    "marked": "^18.0.2",
     "oidc-client-ts": "^3.5.0",
     "oidc-provider-solid": "^0.1.11",
     "prismjs": "^1.30.0",

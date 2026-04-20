@@ -8,6 +8,7 @@ import type { UserManagerSettings } from 'oidc-client-ts';
 import App from './App';
 import { loadRuntimeConfig } from './runtime-config';
 import { configureRatApi } from '@/lib/rat-api';
+import { configureAgentApi } from '@/lib/agent-api';
 
 const config = await loadRuntimeConfig();
 
@@ -21,6 +22,7 @@ const authConfig: UserManagerSettings = {
 };
 
 configureRatApi(config, authConfig);
+configureAgentApi(config, authConfig);
 
 const root = document.getElementById('root');
 
