@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::queries::{FileRow, RepoRow, SnippetRow};
+use crate::queries::{FileListRow, FileRow, RepoRow, SnippetRow};
 
 // ── Requests ──
 
@@ -46,6 +46,17 @@ pub struct RepoGetRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileGetRequest {
+    pub repo_id: String,
+    pub source_path: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FileListRequest {
+    pub repo_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SnippetListRequest {
     pub repo_id: String,
     pub source_path: String,
 }
@@ -104,6 +115,16 @@ pub struct FileGetResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct FileListResponse {
+    pub files: Vec<FileListRow>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SnippetListResponse {
+    pub snippets: Vec<SnippetRow>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RepoSearchResult {
     #[serde(flatten)]
     pub repo: RepoRow,
@@ -127,6 +148,8 @@ pub enum ApiRequest {
     RepoGet(RepoGetRequest),
     RepoSearch(RepoSearchRequest),
     FileGet(FileGetRequest),
+    FileList(FileListRequest),
+    SnippetList(SnippetListRequest),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -139,4 +162,6 @@ pub enum ApiResponse {
     RepoGet(RepoGetResponse),
     RepoSearch(RepoSearchResponse),
     FileGet(FileGetResponse),
+    FileList(FileListResponse),
+    SnippetList(SnippetListResponse),
 }

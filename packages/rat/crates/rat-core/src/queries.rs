@@ -21,6 +21,14 @@ pub struct FileRow {
     pub language: Option<String>,
 }
 
+/// Lightweight row for listing files of a repo (no content).
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+pub struct FileListRow {
+    pub id: i64,
+    pub source_path: String,
+    pub language: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct SnippetRow {
     pub id: i64,
@@ -189,6 +197,44 @@ pub async fn count_repo_contents<'e, E: PgExecutor<'e>>(
         deleted_files,
         deleted_snippets,
     }))
+}
+
+pub async fn list_snippets_by_file<'e, E: PgExecutor<'e>>(
+    executor: E,
+    repo_id: &str,
+    source_path: &str,
+) -> Result<Vec<SnippetRow>, sqlx::Error> {
+    sqlx::query_as::<_, SnippetRow>(
+        r#"
+        SELECT s.id, s.repo_id, f.source_path, s.content, s.description,
+               s.source_type, s.symbol_name, s.start_line, s.end_line, f.language
+        FROM snippets s
+        JOIN files f ON f.id = s.file_id
+        WHERE s.repo_id = $1 AND f.source_path = $2
+        ORDER BY s.start_line ASC NULLS LAST
+        "#,
+    )
+    .bind(repo_id)
+    .bind(source_path)
+    .fetch_all(executor)
+    .await
+}
+
+pub async fn list_files_by_repo<'e, E: PgExecutor<'e>>(
+    executor: E,
+    repo_id: &str,
+) -> Result<Vec<FileListRow>, sqlx::Error> {
+    sqlx::query_as::<_, FileListRow>(
+        r#"
+        SELECT id, source_path, language
+        FROM files
+        WHERE repo_id = $1
+        ORDER BY source_path
+        "#,
+    )
+    .bind(repo_id)
+    .fetch_all(executor)
+    .await
 }
 
 pub async fn get_file<'e, E: PgExecutor<'e>>(

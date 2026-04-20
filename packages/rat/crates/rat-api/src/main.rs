@@ -54,6 +54,8 @@ async fn handler(
         ApiRequest::RepoGet(req) => actions::repo_get::handle_repo_get(state, req).await.map(ApiResponse::RepoGet),
         ApiRequest::RepoSearch(req) => actions::repo_search::handle_repo_search(state, req).await.map(ApiResponse::RepoSearch),
         ApiRequest::FileGet(req) => actions::file_get::handle_file_get(state, req).await.map(ApiResponse::FileGet),
+        ApiRequest::FileList(req) => actions::file_list::handle_file_list(state, req).await.map(ApiResponse::FileList),
+        ApiRequest::SnippetList(req) => actions::snippet_list::handle_snippet_list(state, req).await.map(ApiResponse::SnippetList),
     }
 }
 
