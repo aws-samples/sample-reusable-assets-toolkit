@@ -1,0 +1,116 @@
+{
+  "name": "idp_code.agent",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "packages/agent/idp_code_agent",
+  "release": {
+    "version": {
+      "versionActions": "@nxlv/python/release/version-actions"
+    }
+  },
+  "tags": [],
+  "targets": {
+    "add": {
+      "executor": "@nxlv/python:add",
+      "options": {}
+    },
+    "build": {
+      "dependsOn": [
+        "lint",
+        "compile",
+        "test"
+      ],
+      "options": {
+        "outputPath": "{workspaceRoot}/dist/{projectRoot}"
+      }
+    },
+    "compile": {
+      "executor": "@nxlv/python:build",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}/build"
+      ],
+      "options": {
+        "outputPath": "{workspaceRoot}/dist/{projectRoot}/build",
+        "publish": false,
+        "lockedVersions": true,
+        "bundleLocalDependencies": true
+      },
+      "cache": true
+    },
+    "format": {
+      "executor": "@nxlv/python:ruff-format",
+      "outputs": [],
+      "options": {
+        "filePatterns": [
+          "idp_code_agent",
+          "tests"
+        ]
+      },
+      "cache": true
+    },
+    "install": {
+      "executor": "@nxlv/python:install",
+      "options": {
+        "silent": false,
+        "args": "",
+        "verbose": false,
+        "debug": false
+      }
+    },
+    "lint": {
+      "executor": "@nxlv/python:ruff-check",
+      "outputs": [],
+      "options": {
+        "lintFilePatterns": [
+          "idp_code_agent",
+          "tests"
+        ]
+      },
+      "cache": true,
+      "dependsOn": [
+        "format"
+      ],
+      "configurations": {
+        "fix": {
+          "fix": true
+        },
+        "skip-lint": {
+          "exitZero": true
+        }
+      }
+    },
+    "lock": {
+      "executor": "@nxlv/python:lock",
+      "options": {
+        "update": false
+      }
+    },
+    "remove": {
+      "executor": "@nxlv/python:remove",
+      "options": {}
+    },
+    "sync": {
+      "executor": "@nxlv/python:sync",
+      "options": {}
+    },
+    "test": {
+      "executor": "@nxlv/python:run-commands",
+      "outputs": [
+        "{workspaceRoot}/reports/{projectRoot}/unittests",
+        "{workspaceRoot}/coverage/{projectRoot}"
+      ],
+      "options": {
+        "command": "uv run pytest tests/",
+        "cwd": "{projectRoot}"
+      },
+      "cache": true
+    },
+    "update": {
+      "executor": "@nxlv/python:update",
+      "options": {}
+    }
+  },
+  "metadata": {
+    "generator": "py#project"
+  }
+}

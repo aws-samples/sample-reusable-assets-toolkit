@@ -40,3 +40,4 @@ Thumbs.db
 .terraform
 runtime-config.json
 vitest.config.*.timestamp*
+/reports

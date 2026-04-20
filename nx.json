@@ -39,7 +39,13 @@
         }
       }
     },
-    "@nx-extend/terraform"
+    "@nx-extend/terraform",
+    {
+      "plugin": "@nxlv/python",
+      "options": {
+        "packageManager": "uv"
+      }
+    }
   ],
   "targetDefaults": {
     "compile": {

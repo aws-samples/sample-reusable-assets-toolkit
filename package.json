@@ -11,6 +11,7 @@
   },
   "private": true,
   "dependencies": {
+    "@aws-cdk/aws-bedrock-agentcore-alpha": "2.250.0-alpha.0",
     "@aws-sdk/client-cognito-identity": "^3.1031.0",
     "@aws-sdk/client-lambda": "^3.1031.0",
     "@aws-sdk/credential-providers": "^3.1031.0",
@@ -38,6 +39,7 @@
     "@nx/js": "22.6.1",
     "@nx/vitest": "22.6.1",
     "@nx/workspace": "22.6.1",
+    "@nxlv/python": "22.1.1",
     "@swc-node/register": "~1.11.1",
     "@swc/core": "~1.15.26",
     "@swc/helpers": "~0.5.21",
