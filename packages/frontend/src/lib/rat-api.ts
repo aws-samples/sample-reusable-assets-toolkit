@@ -37,6 +37,12 @@ export type FileRow = {
   language: string | null;
 };
 
+export type FileListRow = {
+  id: number;
+  source_path: string;
+  language: string | null;
+};
+
 // ── Request/Response shapes (mirror rat-core/src/api.rs) ─────────────
 
 export type SearchRequest = {
@@ -70,6 +76,16 @@ export type FileGetRequest = {
 };
 export type FileGetResponse = { file: FileRow | null };
 
+export type FileListRequest = { action: 'file_list'; repo_id: string };
+export type FileListResponse = { files: FileListRow[] };
+
+export type SnippetListRequest = {
+  action: 'snippet_list';
+  repo_id: string;
+  source_path: string;
+};
+export type SnippetListResponse = { snippets: SnippetRow[] };
+
 export type PurgeRequest = { action: 'purge'; repo_id: string };
 export type PurgeResponse = {
   repo_id: string;
@@ -93,6 +109,8 @@ export type ApiRequest =
   | RepoSearchRequest
   | RepoGetRequest
   | FileGetRequest
+  | FileListRequest
+  | SnippetListRequest
   | PurgeRequest
   | RepoUpsertRequest;
 
@@ -183,6 +201,21 @@ export function getFile(
 ): Promise<FileGetResponse> {
   return invoke<FileGetResponse>({
     action: 'file_get',
+    repo_id,
+    source_path,
+  });
+}
+
+export function listFiles(repo_id: string): Promise<FileListResponse> {
+  return invoke<FileListResponse>({ action: 'file_list', repo_id });
+}
+
+export function listSnippetsByFile(
+  repo_id: string,
+  source_path: string,
+): Promise<SnippetListResponse> {
+  return invoke<SnippetListResponse>({
+    action: 'snippet_list',
     repo_id,
     source_path,
   });

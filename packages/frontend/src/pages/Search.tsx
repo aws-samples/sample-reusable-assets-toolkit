@@ -17,6 +17,7 @@ import {
   type SearchResult,
 } from '@/lib/rat-api';
 import { highlight } from '@/lib/highlight';
+import { parseDescription } from '@/lib/description';
 
 type Data = {
   repos: RepoSearchResult[];
@@ -117,44 +118,6 @@ const Results: Component<{ data: Data | null }> = (props) => {
   );
 };
 
-/**
- * Backend snippet descriptions follow a fixed 3-line format:
- *   SUMMARY: ...
- *   IDENTIFIERS: ...
- *   KEYWORDS: ...
- * Parse into structured fields. IDENTIFIERS/KEYWORDS primarily exist to
- * boost FTS retrieval, but KEYWORDS are useful as display tags.
- */
-type ParsedDescription = {
-  summary: string;
-  identifiers: string[];
-  keywords: string[];
-};
-
-const splitList = (s: string): string[] =>
-  s.split(',').map((x) => x.trim()).filter(Boolean);
-
-const parseDescription = (description: string): ParsedDescription => {
-  let summary = '';
-  let identifiers: string[] = [];
-  let keywords: string[] = [];
-  for (const line of description.split('\n')) {
-    const m =
-      line.match(/^\s*SUMMARY:\s*(.*)$/) ??
-      line.match(/^\s*IDENTIFIERS:\s*(.*)$/) ??
-      line.match(/^\s*KEYWORDS:\s*(.*)$/);
-    if (!m) continue;
-    const value = m[1];
-    if (line.match(/^\s*SUMMARY:/)) summary = value.trim();
-    else if (line.match(/^\s*IDENTIFIERS:/)) identifiers = splitList(value);
-    else if (line.match(/^\s*KEYWORDS:/)) keywords = splitList(value);
-  }
-  // Fallback: if no SUMMARY label found, use the whole description.
-  if (!summary && !identifiers.length && !keywords.length) {
-    summary = description.trim();
-  }
-  return { summary, identifiers, keywords };
-};
 
 const fileHref = (r: SearchResult): string => {
   let url = `/file?repo=${encodeURIComponent(r.repo_id)}&path=${encodeURIComponent(r.source_path)}`;
@@ -204,7 +167,12 @@ const ReposSection: Component<{ repos: RepoSearchResult[] }> = (props) => {
                     >
                       {relevanceBar(relative())}
                     </span>
-                    <span class="truncate font-bold">{repo.repo_id}</span>
+                    <A
+                      href={`/repo?id=${encodeURIComponent(repo.repo_id)}`}
+                      class="truncate font-bold hover:underline"
+                    >
+                      {repo.repo_id}
+                    </A>
                   </div>
                   <span class="flex-none text-xs text-gray-400">
                     {repo.snippet_count} snippets

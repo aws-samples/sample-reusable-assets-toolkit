@@ -1,6 +1,6 @@
 import type { Component } from 'solid-js';
 import { createResource, createSignal, For, Show } from 'solid-js';
-import { useNavigate } from '@solidjs/router';
+import { A, useNavigate } from '@solidjs/router';
 import { useAuth } from 'oidc-provider-solid';
 import { Header } from '@/components/Header';
 import { SearchInput } from '@/components/SearchInput';
@@ -75,7 +75,12 @@ const Landing: Component = () => {
                         {(repo) => (
                           <li class="py-3">
                             <div class="flex items-center justify-between gap-4">
-                              <span class="font-bold">{repo.repo_id}</span>
+                              <A
+                                href={`/repo?id=${encodeURIComponent(repo.repo_id)}`}
+                                class="font-bold hover:underline"
+                              >
+                                {repo.repo_id}
+                              </A>
                               <span class="text-xs text-gray-400">
                                 {repo.snippet_count} snippets
                               </span>

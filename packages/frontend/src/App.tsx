@@ -5,6 +5,7 @@ import { useAuth } from 'oidc-provider-solid';
 import Landing from '@/pages/Landing';
 import SearchPage from '@/pages/Search';
 import FilePage from '@/pages/File';
+import RepoPage from '@/pages/Repo';
 
 const App: Component = () => {
   const { isLoading } = useAuth();
@@ -22,6 +23,7 @@ const App: Component = () => {
         <Route path="/" component={Landing} />
         <Route path="/search" component={SearchPage} />
         <Route path="/file" component={FilePage} />
+        <Route path="/repo" component={RepoPage} />
         <Route path="*" component={Landing} />
       </Router>
     </Show>
