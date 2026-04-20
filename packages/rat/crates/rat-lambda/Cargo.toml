@@ -2,6 +2,7 @@
 name = "rat-lambda"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 
 [lib]
 name = "rat_lambda"

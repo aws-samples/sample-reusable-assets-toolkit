@@ -11,8 +11,9 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
+license = "LicenseRef-Amazon-Software-License"
 
 [workspace.dependencies]
 rat-core = { path = "crates/rat-core" }
