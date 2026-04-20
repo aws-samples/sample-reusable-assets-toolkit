@@ -8,7 +8,7 @@ use rmcp::{
 };
 use tracing_subscriber::EnvFilter;
 
-use super::{list, search};
+use super::{file, list, search};
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct SearchParams {
@@ -25,6 +25,14 @@ pub struct SearchParams {
     #[schemars(description = "Maximum number of results (default: 3)")]
     #[serde(default)]
     pub limit: Option<i64>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct FileGetParams {
+    #[schemars(description = "Repository id the file belongs to")]
+    pub repo_id: String,
+    #[schemars(description = "File path within the repository (e.g. 'src/main.rs')")]
+    pub source_path: String,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -148,7 +156,7 @@ impl RatMcpServer {
                 let commit = repo
                     .indexed_commit_id
                     .as_deref()
-                    .map(rat_cli::git::short_commit)
+                    .map(crate::git::short_commit)
                     .unwrap_or("-");
                 let description = repo
                     .description
@@ -170,6 +178,45 @@ impl RatMcpServer {
             .collect();
 
         Ok(CallToolResult::success(contents))
+    }
+
+    #[tool(
+        description = "Fetch a single file's full contents from the rat reusable asset store by repository id and path. \
+            Use this after `search` or `search_repos` when you need the entire file — not just a snippet — e.g. to read \
+            surrounding context, understand module structure, or quote a complete function. \
+            Returns the file content along with its language; returns a not-found message if the file is not indexed."
+    )]
+    async fn file_get(
+        &self,
+        Parameters(params): Parameters<FileGetParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let file = file::run_file_get(
+            &params.repo_id,
+            &params.source_path,
+            self.profile_name.as_deref(),
+        )
+        .await
+        .map_err(|e| McpError::internal_error(format!("file_get failed: {e:#}"), None))?;
+
+        let Some(file) = file else {
+            return Ok(CallToolResult::success(vec![Content::text(format!(
+                "File not found: {} / {}",
+                params.repo_id, params.source_path
+            ))]));
+        };
+
+        let mut header = format!(
+            "─── [{}] {} ───\n  repo: {}",
+            file.id, file.source_path, file.repo_id
+        );
+        if let Some(lang) = &file.language {
+            header.push_str(&format!("  lang: {lang}"));
+        }
+
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "{header}\n\n{}\n",
+            file.content
+        ))]))
     }
 
     #[tool(
@@ -196,7 +243,7 @@ impl RatMcpServer {
             let commit = repo
                 .indexed_commit_id
                 .as_deref()
-                .map(rat_cli::git::short_commit)
+                .map(crate::git::short_commit)
                 .unwrap_or("-");
             text.push_str(&format!(
                 "{:<60}  {:<20}  {:<10}  {:>10}  {:>12}\n",

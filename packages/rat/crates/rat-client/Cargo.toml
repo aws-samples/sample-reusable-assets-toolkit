@@ -1,0 +1,17 @@
+[package]
+name = "rat-client"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "rat_client"
+path = "src/lib.rs"
+
+[dependencies]
+rat-core.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+aws-sdk-lambda.workspace = true
+tracing.workspace = true

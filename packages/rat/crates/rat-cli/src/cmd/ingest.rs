@@ -6,9 +6,10 @@ use dialoguer::console::Style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Input, Select};
 
-use rat_cli::git::short_commit;
-use rat_cli::session::CliSession;
-use rat_cli::{api_client, chunk, git, ratignore, sqs as sqs_helper};
+use crate::git::short_commit;
+use crate::session::CliSession;
+use crate::{chunk, git, ratignore, sqs as sqs_helper};
+use rat_client::api_client;
 use rat_core::message::{Action, ChunkEntry, FileMessage, SourceType};
 use rat_core::queries::RepoRow;
 

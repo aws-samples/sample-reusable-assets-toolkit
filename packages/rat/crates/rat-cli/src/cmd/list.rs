@@ -1,24 +1,14 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 
-use rat_cli::api_client;
-use rat_cli::git::short_commit;
-use rat_cli::session::CliSession;
-use rat_core::api::{ApiRequest, ListRequest, ListResponse};
+use crate::git::short_commit;
+use crate::session::CliSession;
+use rat_client::ops;
 use rat_core::queries::RepoRow;
 
-pub(crate) async fn run_list(profile_name: Option<&str>) -> Result<Vec<RepoRow>> {
+pub async fn run_list(profile_name: Option<&str>) -> Result<Vec<RepoRow>> {
     let session = CliSession::init(profile_name).await?;
     let lambda = aws_sdk_lambda::Client::new(&session.aws_config);
-
-    let bytes = api_client::invoke_api(
-        &lambda,
-        &session.profile.api_function_arn,
-        &ApiRequest::List(ListRequest {}),
-    )
-    .await?;
-    let response: ListResponse =
-        serde_json::from_slice(&bytes).context("failed to parse list response")?;
-    Ok(response.repos)
+    ops::list(&lambda, &session.profile.api_function_arn).await
 }
 
 pub async fn handle(profile_name: Option<&str>) -> Result<()> {

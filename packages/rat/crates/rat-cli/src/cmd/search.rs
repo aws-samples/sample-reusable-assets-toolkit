@@ -1,17 +1,13 @@
-use anyhow::{Context, Result};
-
-use rat_cli::api_client;
-use rat_cli::git::short_commit;
-use rat_cli::highlight;
-use rat_cli::session::CliSession;
-use rat_core::api::{
-    ApiRequest, RepoSearchRequest, RepoSearchResponse, RepoSearchResult, SearchRequest,
-    SearchResponse, SearchResult,
-};
+use anyhow::Result;
 
 use crate::SearchScope;
+use crate::git::short_commit;
+use crate::highlight;
+use crate::session::CliSession;
+use rat_client::ops;
+use rat_core::api::{RepoSearchResult, SearchResult};
 
-pub(crate) async fn run_search(
+pub async fn run_search(
     query: &str,
     repo_id: Option<&str>,
     source_type: &str,
@@ -20,35 +16,25 @@ pub(crate) async fn run_search(
 ) -> Result<Vec<SearchResult>> {
     let session = CliSession::init(profile_name).await?;
     let lambda = aws_sdk_lambda::Client::new(&session.aws_config);
-
-    let request = ApiRequest::Search(SearchRequest {
-        query: query.to_string(),
-        repo_id: repo_id.map(|s| s.to_string()),
-        source_type: Some(source_type.to_string()),
+    ops::search(
+        &lambda,
+        &session.profile.api_function_arn,
+        query,
+        repo_id,
+        source_type,
         limit,
-    });
-    let bytes = api_client::invoke_api(&lambda, &session.profile.api_function_arn, &request).await?;
-    let response: SearchResponse =
-        serde_json::from_slice(&bytes).context("failed to parse search response")?;
-    Ok(response.results)
+    )
+    .await
 }
 
-pub(crate) async fn run_repo_search(
+pub async fn run_repo_search(
     query: &str,
     limit: i64,
     profile_name: Option<&str>,
 ) -> Result<Vec<RepoSearchResult>> {
     let session = CliSession::init(profile_name).await?;
     let lambda = aws_sdk_lambda::Client::new(&session.aws_config);
-
-    let request = ApiRequest::RepoSearch(RepoSearchRequest {
-        query: query.to_string(),
-        limit,
-    });
-    let bytes = api_client::invoke_api(&lambda, &session.profile.api_function_arn, &request).await?;
-    let response: RepoSearchResponse =
-        serde_json::from_slice(&bytes).context("failed to parse repo_search response")?;
-    Ok(response.results)
+    ops::repo_search(&lambda, &session.profile.api_function_arn, query, limit).await
 }
 
 pub async fn handle(

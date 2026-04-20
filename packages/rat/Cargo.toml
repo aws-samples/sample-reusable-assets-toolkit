@@ -2,10 +2,12 @@
 resolver = "2"
 members = [
     "crates/rat-core",
+    "crates/rat-client",
     "crates/rat-cli",
     "crates/rat-lambda",
     "crates/rat-migration",
     "crates/rat-api",
+    "crates/rat-mcp",
 ]
 
 [workspace.package]

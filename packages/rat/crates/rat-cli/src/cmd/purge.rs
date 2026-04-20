@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 
-use rat_cli::api_client;
-use rat_cli::session::CliSession;
+use rat_client::api_client;
+use crate::session::CliSession;
 use rat_core::api::{ApiRequest, PurgeRequest, PurgeResponse};
 
 pub async fn handle(repo_id: &str, profile_name: Option<&str>) -> Result<()> {

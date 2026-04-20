@@ -1,0 +1,72 @@
+[
+  {
+    "name": "search",
+    "description": "Search the rat reusable asset store for indexed code snippets and documentation. Use this tool WHENEVER the user's request mentions \"rat\" (e.g. \"use rat\", \"search rat\", \"ask rat\") or asks to find, reuse, or reference existing internal code assets, snippets, examples, or past implementations from the team's reusable asset store. IMPORTANT: the `query` parameter MUST be written in English. If the user's request is in another language, translate the search intent to English before calling this tool. Returns matching snippets ranked by relevance, including file path, repository, symbol, and source content.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Search query. MUST be written in English — translate non-English user input before calling this tool. Natural language or keywords both work."
+        },
+        "repo_id": {
+          "type": "string",
+          "description": "Optional repository id to restrict the search to"
+        },
+        "source_type": {
+          "type": "string",
+          "description": "Source type filter: 'code' or 'doc' (default: code)"
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum number of results (default: 3)"
+        }
+      },
+      "required": ["query"]
+    }
+  },
+  {
+    "name": "search_repos",
+    "description": "Search the rat reusable asset store for repositories matching a natural-language query. Use this tool when the user asks for a REPOSITORY (project, codebase, team repo) that does a particular thing — e.g. \"find repos about authentication\", \"which project handles payments?\", \"show me repos for vector search\". For individual code snippets or functions, use the `search` tool instead. IMPORTANT: the `query` parameter MUST be in English; translate non-English intent before calling. Returns matching repositories ranked by relevance with their description, branch, and file/snippet counts.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Search query describing the kind of repository to find. MUST be written in English — translate non-English user input before calling this tool."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum number of repositories to return (default: 5)"
+        }
+      },
+      "required": ["query"]
+    }
+  },
+  {
+    "name": "list_repos",
+    "description": "List all repositories indexed in the rat reusable asset store, with file and snippet counts. Use this to discover which repositories are available before calling `search` with a `repo_id` filter, or whenever the user asks what repos / assets are indexed in rat.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "file_get",
+    "description": "Fetch a single file's full contents from the rat reusable asset store by repository id and path. Use this after `search` or `search_repos` when you need the entire file — not just a snippet — e.g. to read surrounding context, understand module structure, or quote a complete function. Returns the file content along with its language; returns a not-found message if the file is not indexed.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "repo_id": {
+          "type": "string",
+          "description": "Repository id the file belongs to"
+        },
+        "source_path": {
+          "type": "string",
+          "description": "File path within the repository (e.g. 'src/main.rs')"
+        }
+      },
+      "required": ["repo_id", "source_path"]
+    }
+  }
+]

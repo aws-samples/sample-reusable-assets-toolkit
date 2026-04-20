@@ -1,5 +1,6 @@
 pub mod chunk;
 pub mod configure;
+pub mod file;
 pub mod ingest;
 pub mod list;
 pub mod login;

@@ -2783,6 +2783,7 @@ dependencies = [
  "ignore",
  "open",
  "rand 0.10.0",
+ "rat-client",
  "rat-core",
  "reqwest",
  "rmcp",
@@ -2804,6 +2805,19 @@ dependencies = [
  "tree-sitter-python",
  "tree-sitter-rust",
  "tree-sitter-typescript",
+]
+
+[[package]]
+name = "rat-client"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "aws-sdk-lambda",
+ "rat-core",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -2838,6 +2852,24 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "rat-mcp"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "aws-config",
+ "aws-sdk-lambda",
+ "envy",
+ "lambda_runtime",
+ "rat-client",
+ "rat-core",
+ "serde",
+ "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",

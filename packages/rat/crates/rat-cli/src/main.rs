@@ -1,14 +1,5 @@
-mod cmd;
-
-use clap::{Parser, ValueEnum};
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-#[clap(rename_all = "lowercase")]
-enum SearchScope {
-    Code,
-    Doc,
-    Repo,
-}
+use clap::Parser;
+use rat_cli::{cmd, SearchScope};
 
 #[derive(Parser)]
 #[command(name = "rat", version, about = "Reusable Asset Toolkit")]

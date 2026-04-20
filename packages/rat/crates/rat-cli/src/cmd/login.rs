@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
-use rat_cli::auth;
-use rat_cli::config;
+use crate::auth;
+use crate::config;
 
 pub async fn handle(profile_name: Option<&str>, status: bool) -> Result<()> {
     let cfg = config::load_config()?;

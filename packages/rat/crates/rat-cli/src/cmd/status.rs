@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use aws_sdk_sqs::types::QueueAttributeName;
 
-use rat_cli::aws;
-use rat_cli::config;
+use crate::aws;
+use crate::config;
 
 pub async fn handle(profile_name: Option<&str>) -> Result<()> {
     let cfg = config::load_config()?

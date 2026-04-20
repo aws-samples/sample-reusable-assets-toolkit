@@ -6,7 +6,7 @@ use dialoguer::console::Style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Input;
 
-use rat_cli::config::{self, Profile, RatConfig};
+use crate::config::{self, Profile, RatConfig};
 
 #[derive(Subcommand)]
 pub enum ConfigureAction {

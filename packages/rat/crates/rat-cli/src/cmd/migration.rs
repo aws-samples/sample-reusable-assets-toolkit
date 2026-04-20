@@ -3,7 +3,7 @@ use aws_sdk_lambda::primitives::Blob;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Select;
 
-use rat_cli::session::CliSession;
+use crate::session::CliSession;
 
 pub async fn handle(reset: bool, profile_name: Option<&str>) -> Result<()> {
     let session = CliSession::init(profile_name).await?;

@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::Result;
-use rat_cli::{chunk, highlight};
+use crate::{chunk, highlight};
 
 pub fn handle(file: &str) -> Result<()> {
     let path = Path::new(file).canonicalize()?;
