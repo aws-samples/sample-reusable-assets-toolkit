@@ -5,7 +5,7 @@ AWS_REGION = "ap-northeast-2"
 [tasks.deploy]
 description = "Deploy a specific CDK stack (fzf)"
 run = """
-stack=$(echo "IDP-CODE-NETWORK\nIDP-CODE-STORAGE\nIDP-CODE-AUTH\nIDP-CODE-APPLICATION\nIDP-CODE-FRONTEND" | fzf --prompt="Select stack: ")
+stack=$(echo "IDP-CODE-NETWORK\nIDP-CODE-STORAGE\nIDP-CODE-AUTH\nIDP-CODE-APPLICATION\nIDP-CODE-AGENT\nIDP-CODE-FRONTEND" | fzf --prompt="Select stack: ")
 pnpm nx run @idp-code/infra:deploy $stack --output-style=stream
 """
 
@@ -22,6 +22,7 @@ user_pool_id=$(aws ssm get-parameter --name /idp-code/cognito/user-pool-id --que
 web_client_id=$(aws ssm get-parameter --name /idp-code/cognito/web-client-id --query 'Parameter.Value' --output text)
 identity_pool_id=$(aws ssm get-parameter --name /idp-code/cognito/web-identity-pool-id --query 'Parameter.Value' --output text)
 function_arn=$(aws ssm get-parameter --name /idp-code/api/function-arn --query 'Parameter.Value' --output text)
+agent_runtime_arn=$(aws ssm get-parameter --name /idp-code/agent/runtime-arn --query 'Parameter.Value' --output text)
 
 mkdir -p packages/frontend/public
 
@@ -31,6 +32,7 @@ jq -n \
   --arg userPoolClientId "$web_client_id" \
   --arg identityPoolId "$identity_pool_id" \
   --arg functionArn "$function_arn" \
+  --arg agentRuntimeArn "$agent_runtime_arn" \
   '{
     cognito: {
       region: $region,
@@ -40,6 +42,9 @@ jq -n \
     },
     api: {
       functionArn: $functionArn
+    },
+    agent: {
+      runtimeArn: $agentRuntimeArn
     }
   }' > packages/frontend/public/runtime-config.json
 

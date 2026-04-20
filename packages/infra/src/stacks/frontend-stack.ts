@@ -173,6 +173,10 @@ export class FrontendStack extends Stack {
       this,
       SSM_KEYS.MIGRATION_FUNCTION_ARN,
     );
+    const agentRuntimeArn = StringParameter.valueForStringParameter(
+      this,
+      SSM_KEYS.AGENT_RUNTIME_ARN,
+    );
 
     this.authenticatedRole.addToPrincipalPolicy(
       new iam.PolicyStatement({
@@ -184,6 +188,12 @@ export class FrontendStack extends Stack {
       new iam.PolicyStatement({
         actions: ['lambda:InvokeFunction'],
         resources: [apiFunctionArn, migrationFunctionArn],
+      }),
+    );
+    this.authenticatedRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ['bedrock-agentcore:InvokeAgentRuntime'],
+        resources: [agentRuntimeArn, `${agentRuntimeArn}/*`],
       }),
     );
     this.authenticatedRole.addToPrincipalPolicy(
@@ -208,6 +218,9 @@ export class FrontendStack extends Stack {
           },
           api: {
             functionArn: apiFunctionArn,
+          },
+          agent: {
+            runtimeArn: agentRuntimeArn,
           },
         }),
       ],

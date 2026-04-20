@@ -16,4 +16,5 @@ export const SSM_KEYS = {
   FRONTEND_DISTRIBUTION_DOMAIN: '/idp-code/frontend/distribution-domain',
   COGNITO_WEB_CLIENT_ID: '/idp-code/cognito/web-client-id',
   COGNITO_WEB_IDENTITY_POOL_ID: '/idp-code/cognito/web-identity-pool-id',
+  AGENT_RUNTIME_ARN: '/idp-code/agent/runtime-arn',
 } as const;

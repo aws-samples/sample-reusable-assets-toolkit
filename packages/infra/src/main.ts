@@ -1,3 +1,4 @@
+import { AgentStack } from './stacks/agent-stack.js';
 import { ApplicationStack } from './stacks/application-stack.js';
 import { AuthStack } from './stacks/auth-stack.js';
 import { FrontendStack } from './stacks/frontend-stack.js';
@@ -36,6 +37,11 @@ const application = new ApplicationStack(app, 'IDP-CODE-APPLICATION', {
 application.addDependency(auth);
 application.addDependency(storage);
 
+const agent = new AgentStack(app, 'IDP-CODE-AGENT', {
+  env,
+  crossRegionReferences: true,
+});
+
 const frontend = new FrontendStack(app, 'IDP-CODE-FRONTEND', {
   env,
   crossRegionReferences: true,
@@ -43,5 +49,6 @@ const frontend = new FrontendStack(app, 'IDP-CODE-FRONTEND', {
 });
 frontend.addDependency(auth);
 frontend.addDependency(application);
+frontend.addDependency(agent);
 
 app.synth();

@@ -6,6 +6,7 @@ export type RuntimeConfig = {
     identityPoolId: string;
   };
   api: { functionArn: string };
+  agent: { runtimeArn: string };
 };
 
 export async function loadRuntimeConfig(): Promise<RuntimeConfig> {
