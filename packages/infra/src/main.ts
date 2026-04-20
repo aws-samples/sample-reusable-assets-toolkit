@@ -41,6 +41,7 @@ const agent = new AgentStack(app, 'IDP-CODE-AGENT', {
   env,
   crossRegionReferences: true,
 });
+agent.addDependency(application);
 
 const frontend = new FrontendStack(app, 'IDP-CODE-FRONTEND', {
   env,
