@@ -1,4 +1,4 @@
-import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -12,6 +12,7 @@ import { Construct } from 'constructs';
 export class AuthStack extends Stack {
   public readonly authenticatedRole: iam.IRole;
   public readonly userPool: cognito.UserPool;
+  public readonly userPoolDomain: cognito.UserPoolDomain;
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
@@ -34,10 +35,11 @@ export class AuthStack extends Stack {
     });
 
     // Hosted UI domain (managed login)
-    userPool.addDomain('Domain', {
+    const userPoolDomain = userPool.addDomain('Domain', {
       cognitoDomain: { domainPrefix },
       managedLoginVersion: cognito.ManagedLoginVersion.NEWER_MANAGED_LOGIN,
     });
+    this.userPoolDomain = userPoolDomain;
 
     // Public app client (PKCE, no secret)
     const appClient = userPool.addClient('CliClient', {
@@ -106,6 +108,23 @@ export class AuthStack extends Stack {
     new StringParameter(this, 'CognitoUserPoolIdParam', {
       parameterName: SSM_KEYS.COGNITO_USER_POOL_ID,
       stringValue: userPool.userPoolId,
+    });
+
+    // --- CfnOutputs ---
+    new CfnOutput(this, 'CognitoDomain', {
+      value: relyingPartyDomain,
+    });
+
+    new CfnOutput(this, 'CognitoAppClientId', {
+      value: appClient.userPoolClientId,
+    });
+
+    new CfnOutput(this, 'CognitoIdentityPoolId', {
+      value: identityPool.identityPoolId,
+    });
+
+    new CfnOutput(this, 'CognitoUserPoolId', {
+      value: userPool.userPoolId,
     });
   }
 }

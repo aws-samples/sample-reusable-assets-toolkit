@@ -2,6 +2,7 @@ import { AgentStack } from './stacks/agent-stack.js';
 import { ApplicationStack } from './stacks/application-stack.js';
 import { AuthStack } from './stacks/auth-stack.js';
 import { FrontendStack } from './stacks/frontend-stack.js';
+import { McpStack } from './stacks/mcp-stack.js';
 import { NetworkStack } from './stacks/network-stack.js';
 import { StorageStack } from './stacks/storage-stack.js';
 import { App } from ':idp-code/common-constructs';
@@ -37,11 +38,21 @@ const application = new ApplicationStack(app, 'IDP-CODE-APPLICATION', {
 application.addDependency(auth);
 application.addDependency(storage);
 
+const mcp = new McpStack(app, 'IDP-CODE-MCP', {
+  env,
+  crossRegionReferences: true,
+  userPool: auth.userPool,
+  userPoolDomain: auth.userPoolDomain,
+});
+mcp.addDependency(auth);
+mcp.addDependency(application);
+
 const agent = new AgentStack(app, 'IDP-CODE-AGENT', {
   env,
   crossRegionReferences: true,
+  mcpGateway: mcp.iamGateway,
 });
-agent.addDependency(application);
+agent.addDependency(mcp);
 
 const frontend = new FrontendStack(app, 'IDP-CODE-FRONTEND', {
   env,
