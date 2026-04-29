@@ -72,11 +72,9 @@ export class McpStack extends Stack {
 
     // ─── Confidential App Client (DCR proxy) ──────────────────────────
     // Claude Code: requires `--callback-port 33418` (exact match in Cognito).
-    // Kiro CLI/IDE: rotates through a fixed fallback port list on 127.0.0.1.
+    // Kiro CLI/IDE: requires `oauth.redirectUri: "http://127.0.0.1:49153"`
+    //   in mcp.json — Kiro picks a random ephemeral port otherwise.
     // Claude Desktop / claude.ai: uses hosted callback URL.
-    const kiroPorts = [
-      3128, 4649, 6588, 8008, 9091, 49153, 50153, 51153, 52153, 53153,
-    ];
     const proxyClient = props.userPool.addClient('McpProxyClient', {
       generateSecret: true,
       oAuth: {
@@ -85,11 +83,12 @@ export class McpStack extends Stack {
           cognito.OAuthScope.OPENID,
           cognito.OAuthScope.PROFILE,
           cognito.OAuthScope.EMAIL,
+          cognito.OAuthScope.PHONE,
         ],
         callbackUrls: [
           'http://localhost:33418/callback',
           'https://claude.ai/api/mcp/auth_callback',
-          ...kiroPorts.map((p) => `http://127.0.0.1:${p}/`),
+          'http://127.0.0.1:49153',
         ],
       },
       preventUserExistenceErrors: true,

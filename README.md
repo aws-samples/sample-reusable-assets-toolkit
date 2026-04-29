@@ -299,3 +299,52 @@ Tool names listed in `autoApprove` are executed without per-call confirmation. T
 ### Note
 
 Run `rat login` to obtain a Cognito token **before** invoking MCP tools. Access tokens are automatically refreshed using the stored refresh token; if the refresh token itself expires, log in again.
+
+## Remote MCP (HTTP + OAuth)
+
+A hosted MCP server runs on AWS AgentCore Gateway, fronted by a Dynamic Client Registration (DCR) OAuth proxy backed by Cognito. Use this when you don't want to install the `rat` binary locally.
+
+**Endpoint**: `https://qjxtgksxb1.execute-api.ap-northeast-2.amazonaws.com/mcp`
+
+Each client must use a fixed callback port — Cognito validates `redirect_uri` by exact string match. The proxy pre-registers the callback URLs below; if you want to change them, update `packages/infra/src/stacks/mcp-stack.ts`.
+
+### Claude Code
+
+```sh
+claude mcp add --transport http --callback-port 33418 rat \
+  https://qjxtgksxb1.execute-api.ap-northeast-2.amazonaws.com/mcp
+```
+
+`--callback-port 33418` is required — Claude Code uses random ports by default and OAuth will fail with `redirect_mismatch` otherwise. The pre-registered URL is `http://localhost:33418/callback`.
+
+### Kiro CLI
+
+Add to `~/.kiro/settings/mcp.json` (user) or `.kiro/settings/mcp.json` (workspace):
+
+```json
+{
+  "mcpServers": {
+    "rat": {
+      "type": "http",
+      "url": "https://qjxtgksxb1.execute-api.ap-northeast-2.amazonaws.com/mcp",
+      "oauth": {
+        "redirectUri": "http://127.0.0.1:49153"
+      }
+    }
+  }
+}
+```
+
+`oauth.redirectUri` is required — Kiro CLI assigns a random ephemeral port otherwise. The pre-registered URL is `http://127.0.0.1:49153` (no trailing slash, no path).
+
+### Claude Desktop / claude.ai
+
+Add as a Custom Connector:
+
+- **Server URL**: `https://qjxtgksxb1.execute-api.ap-northeast-2.amazonaws.com/mcp`
+
+No port configuration needed — Anthropic uses the hosted callback `https://claude.ai/api/mcp/auth_callback`, which is pre-registered.
+
+### Auth flow
+
+On first call the client opens a browser for Cognito login, then exchanges the authorization code for a JWT through the DCR proxy. Subsequent MCP calls reuse the cached JWT until it expires; the refresh token renews it automatically.
