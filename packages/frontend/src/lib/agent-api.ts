@@ -4,7 +4,7 @@ import {
 } from '@aws-sdk/client-bedrock-agentcore';
 import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
 import { fromCognitoIdentityPool } from '@aws-sdk/credential-providers';
-import { UserManager, type UserManagerSettings } from 'oidc-client-ts';
+import { UserManager } from 'oidc-client-ts';
 
 import type { RuntimeConfig } from '@/runtime-config';
 
@@ -18,9 +18,8 @@ let runtimeArn: string | null = null;
 
 export function configureAgentApi(
   rc: RuntimeConfig,
-  authConfig: UserManagerSettings,
+  userManager: UserManager,
 ): void {
-  const userManager = new UserManager(authConfig);
   const region = rc.cognito.region;
   const provider = `cognito-idp.${region}.amazonaws.com/${rc.cognito.userPoolId}`;
 
@@ -32,10 +31,14 @@ export function configureAgentApi(
       logins: {
         [provider]: async () => {
           const user = await userManager.getUser();
-          if (!user?.id_token) {
-            throw new Error('No Cognito ID token available — sign in first.');
+          if (!user || user.expired) {
+            const renewed = await userManager.signinSilent();
+            if (!renewed?.id_token) {
+              throw new Error('No Cognito ID token available — sign in first.');
+            }
+            return renewed.id_token;
           }
-          return user.id_token;
+          return user.id_token!;
         },
       },
     }),

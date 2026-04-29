@@ -1,7 +1,7 @@
 import type { Component, JSX } from 'solid-js';
 import { Show } from 'solid-js';
 import { A } from '@solidjs/router';
-import { useAuth } from 'oidc-provider-solid';
+import { useAuth } from '@drskur/oidc-provider-solid';
 
 export const Header: Component<{ children?: JSX.Element }> = (props) => {
   const { user, isAuthenticated, login, logout } = useAuth();

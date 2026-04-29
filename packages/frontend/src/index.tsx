@@ -2,11 +2,12 @@
 import './index.css';
 import { render } from 'solid-js/web';
 import 'solid-devtools';
-import { AuthProvider } from 'oidc-provider-solid';
+import { AuthProvider, useAuth } from '@drskur/oidc-provider-solid';
+import type { JSX } from 'solid-js';
 import type { UserManagerSettings } from 'oidc-client-ts';
 
 import App from './App';
-import { loadRuntimeConfig } from './runtime-config';
+import { loadRuntimeConfig, type RuntimeConfig } from './runtime-config';
 import { configureRatApi } from '@/lib/rat-api';
 import { configureAgentApi } from '@/lib/agent-api';
 
@@ -17,12 +18,19 @@ const authConfig: UserManagerSettings = {
   client_id: config.cognito.userPoolClientId,
   redirect_uri: `${window.location.origin}/callback`,
   post_logout_redirect_uri: `${window.location.origin}/logout`,
+  silent_redirect_uri: `${window.location.origin}/silent-callback.html`,
   response_type: 'code',
   scope: 'openid profile email',
+  automaticSilentRenew: true,
+  loadUserInfo: false,
 };
 
-configureRatApi(config, authConfig);
-configureAgentApi(config, authConfig);
+const ApiBootstrap = (props: { rc: RuntimeConfig; children: JSX.Element }) => {
+  const { userManager } = useAuth();
+  configureRatApi(props.rc, userManager);
+  configureAgentApi(props.rc, userManager);
+  return <>{props.children}</>;
+};
 
 const root = document.getElementById('root');
 
@@ -35,7 +43,9 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
 render(
   () => (
     <AuthProvider config={authConfig}>
-      <App />
+      <ApiBootstrap rc={config}>
+        <App />
+      </ApiBootstrap>
     </AuthProvider>
   ),
   root!,

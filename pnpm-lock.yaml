@@ -29,6 +29,9 @@ importers:
       '@drskur/dcr-proxy':
         specifier: ^0.0.9
         version: 0.0.9(aws-cdk-lib@2.244.0(constructs@10.6.0))(constructs@10.6.0)
+      '@drskur/oidc-provider-solid':
+        specifier: ^0.1.12
+        version: 0.1.12(oidc-client-ts@3.5.0)(solid-js@1.9.12)
       '@kobalte/core':
         specifier: ^0.13.11
         version: 0.13.11(solid-js@1.9.12)
@@ -62,9 +65,6 @@ importers:
       oidc-client-ts:
         specifier: ^3.5.0
         version: 3.5.0
-      oidc-provider-solid:
-        specifier: ^0.1.11
-        version: 0.1.11(oidc-client-ts@3.5.0)(solid-js@1.9.12)
       prismjs:
         specifier: ^1.30.0
         version: 1.30.0
@@ -1064,6 +1064,12 @@ packages:
     peerDependencies:
       aws-cdk-lib: ^2.150.0
       constructs: ^10.0.0
+
+  '@drskur/oidc-provider-solid@0.1.12':
+    resolution: {integrity: sha512-1lWgc6jQa0EUSrXSOycQCbvi+/A64EKj3iJsWg8FrG1G+Uctusc7A22nz26EGIZHawCoo/3dn/rfHJJDAHCCJA==}
+    peerDependencies:
+      oidc-client-ts: ^3.5.0
+      solid-js: ^1.9.12
 
   '@emnapi/core@1.10.0':
     resolution: {integrity: sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw==}
@@ -5114,12 +5120,6 @@ packages:
     resolution: {integrity: sha512-l2q8l9CTCTOlbX+AnK4p3M+4CEpKpyQhle6blQkdFhm0IsBqsxm15bYaSa11G7pWdsYr6epdsRZxJpCyCRbT8A==}
     engines: {node: '>=18'}
 
-  oidc-provider-solid@0.1.11:
-    resolution: {integrity: sha512-hAB6TN7/aJT4m4yHLtnUc07cwUou7PjNW6jyvi4namXsPG3IYCqO3FzudTRE48c2aM94KmA+W2Cj341nLEmXYA==}
-    peerDependencies:
-      oidc-client-ts: ^3.3.0
-      solid-js: ^1.9.0
-
   on-finished@2.4.1:
     resolution: {integrity: sha512-oVlzkg3ENAhCk2zdv7IJwd/QUD4z2RxRwpkcGY8psCVcCYZNq4wYnVWALHM+brtuJjePWiYF/ClmuDr8Ch5+kg==}
     engines: {node: '>= 0.8'}
@@ -7914,6 +7914,11 @@ snapshots:
     dependencies:
       aws-cdk-lib: 2.244.0(constructs@10.6.0)
       constructs: 10.6.0
+
+  '@drskur/oidc-provider-solid@0.1.12(oidc-client-ts@3.5.0)(solid-js@1.9.12)':
+    dependencies:
+      oidc-client-ts: 3.5.0
+      solid-js: 1.9.12
 
   '@emnapi/core@1.10.0':
     dependencies:
@@ -12467,11 +12472,6 @@ snapshots:
   oidc-client-ts@3.5.0:
     dependencies:
       jwt-decode: 4.0.0
-
-  oidc-provider-solid@0.1.11(oidc-client-ts@3.5.0)(solid-js@1.9.12):
-    dependencies:
-      oidc-client-ts: 3.5.0
-      solid-js: 1.9.12
 
   on-finished@2.4.1:
     dependencies:

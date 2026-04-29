@@ -1,7 +1,7 @@
 import type { Component } from 'solid-js';
 import { createResource, createSignal, For, Show } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
-import { useAuth } from 'oidc-provider-solid';
+import { useAuth } from '@drskur/oidc-provider-solid';
 import { Header } from '@/components/Header';
 import { SearchInput, type SearchMode } from '@/components/SearchInput';
 import { listRepos } from '@/lib/rat-api';

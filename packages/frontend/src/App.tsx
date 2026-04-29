@@ -1,7 +1,7 @@
 import type { Component } from 'solid-js';
 import { Show } from 'solid-js';
 import { Route, Router } from '@solidjs/router';
-import { useAuth } from 'oidc-provider-solid';
+import { useAuth } from '@drskur/oidc-provider-solid';
 import Landing from '@/pages/Landing';
 import SearchPage from '@/pages/Search';
 import FilePage from '@/pages/File';

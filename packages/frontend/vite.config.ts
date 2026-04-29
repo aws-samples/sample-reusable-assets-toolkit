@@ -20,5 +20,11 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        silentCallback: resolve(__dirname, 'silent-callback.html'),
+      },
+    },
   },
 });
