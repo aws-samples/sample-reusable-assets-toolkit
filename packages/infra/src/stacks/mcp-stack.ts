@@ -1,4 +1,11 @@
-import { CfnOutput, Duration, Stack, StackProps } from 'aws-cdk-lib';
+import {
+  CfnOutput,
+  CfnResource,
+  Duration,
+  RemovalPolicy,
+  Stack,
+  StackProps,
+} from 'aws-cdk-lib';
 import {
   Gateway,
   GatewayAuthorizer,
@@ -7,11 +14,13 @@ import {
   McpProtocolConfiguration,
   ToolSchema,
 } from '@aws-cdk/aws-bedrock-agentcore-alpha';
+import { CfnStage } from 'aws-cdk-lib/aws-apigatewayv2';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
-import { SSM_KEYS } from ':idp-code/common-constructs';
+import { SSM_KEYS, suppressRules } from ':idp-code/common-constructs';
 import { McpAuthProxy } from '@drskur/dcr-proxy';
 import { RustFunction } from 'cargo-lambda-cdk';
 import { Construct } from 'constructs';
@@ -148,6 +157,47 @@ export class McpStack extends Stack {
         /^https:\/\/claude\.ai\/api\/mcp\/auth_callback$/,
       ],
     });
+
+    // ─── API Gateway access logging ───────────────────────────────────
+    const accessLogGroup = new LogGroup(this, 'AuthProxyAccessLogs', {
+      retention: RetentionDays.ONE_MONTH,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+    const cfnStage = proxy.httpApi.defaultStage?.node
+      .defaultChild as CfnStage;
+    cfnStage.accessLogSettings = {
+      destinationArn: accessLogGroup.logGroupArn,
+      format: JSON.stringify({
+        requestId: '$context.requestId',
+        ip: '$context.identity.sourceIp',
+        requestTime: '$context.requestTime',
+        httpMethod: '$context.httpMethod',
+        routeKey: '$context.routeKey',
+        status: '$context.status',
+        protocol: '$context.protocol',
+        responseLength: '$context.responseLength',
+      }),
+    };
+
+    // ─── Checkov suppressions for AuthProxy (third-party construct) ───
+    suppressRules(
+      Stack.of(this),
+      ['CKV_AWS_158'],
+      'AuthProxy LogGroups: no sensitive data, CloudWatch default encryption sufficient',
+      (c) =>
+        CfnResource.isCfnResource(c) &&
+        c.cfnResourceType === 'AWS::Logs::LogGroup' &&
+        c.node.path.includes('AuthProxy'),
+    );
+    suppressRules(
+      Stack.of(this),
+      ['CKV_AWS_149'],
+      'AuthProxy Cognito client secret, KMS CMK encryption to be addressed later',
+      (c) =>
+        CfnResource.isCfnResource(c) &&
+        c.cfnResourceType === 'AWS::SecretsManager::Secret' &&
+        c.node.path.includes('AuthProxy'),
+    );
 
     // ─── CfnOutputs ───────────────────────────────────────────────────
     new CfnOutput(this, 'IamGatewayUrl', {

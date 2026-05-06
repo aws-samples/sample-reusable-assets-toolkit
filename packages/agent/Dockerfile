@@ -9,6 +9,9 @@ COPY idp_code_agent ./idp_code_agent
 
 RUN uv pip install --system --no-cache .
 
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 8080
 
 CMD ["python", "-m", "idp_code_agent.app"]

@@ -6,6 +6,8 @@ skip-check:
   - CKV_AWS_117 # Lambda functions in VPC
   - CKV_AWS_173 # Encrypt Lambda environment variables
   - CKV_AWS_272 # Code signing
+  # Dockerfile suppressions
+  - CKV_DOCKER_2 # HEALTHCHECK — handled by Bedrock AgentCore runtime via /ping
 output:
   - cli
   - json
