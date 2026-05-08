@@ -55,23 +55,13 @@ packages/
 | `storage-stack` | Aurora PostgreSQL Serverless v2 (pgvector), RDS Proxy, KMS |
 | `application-stack` | Lambda functions (API, Ingest Consumer, Migration), SQS |
 
+## Architecture
+
+![Architecture](./docs/architecture.drawio.svg)
+
 ## Ingestion Pipeline
 
-```mermaid
-graph LR
-    A[Local Git repo] --> B[rat-cli ingest<br/>tree-sitter parse + chunk]
-    B --> C[SQS]
-    C --> D[rat-lambda<br/>LLM description + embedding]
-    D --> E[(Aurora PostgreSQL<br/>pgvector)]
-
-    classDef local fill:#e8f5e9,stroke:#43a047
-    classDef aws fill:#FF9900,color:#fff,stroke:#cc7a00
-    classDef db fill:#3b48cc,color:#fff,stroke:#2a35a0
-
-    class A,B local
-    class C,D aws
-    class E db
-```
+![Ingestion Pipeline](./docs/ingest.drawio.svg)
 
 For design details see [packages/rat/README.md](./packages/rat/README.md).
 
