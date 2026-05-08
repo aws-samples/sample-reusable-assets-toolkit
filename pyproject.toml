@@ -11,6 +11,11 @@ members = [ "packages/agent" ]
 [tool.uv.sources."idp_code.agent"]
 workspace = true
 
+[tool.uv]
+constraint-dependencies = [
+  "python-multipart>=0.0.27",
+]
+
 [dependency-groups]
 dev = [
   "ruff>=0.8.2",
