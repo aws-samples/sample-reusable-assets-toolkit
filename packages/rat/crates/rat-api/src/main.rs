@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use rat_core::api::{ApiRequest, ApiResponse};
 use rat_core::db;

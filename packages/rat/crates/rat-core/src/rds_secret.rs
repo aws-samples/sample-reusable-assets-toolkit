@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use anyhow::Result;
 use aws_sdk_secretsmanager::Client as SecretsClient;
 use serde::Deserialize;

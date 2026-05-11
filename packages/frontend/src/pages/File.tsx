@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import type { Component } from 'solid-js';
 import {
   createEffect,

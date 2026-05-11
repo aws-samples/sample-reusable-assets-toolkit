@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use aws_sdk_lambda::Client as LambdaClient;
 use lambda_runtime::{Error, LambdaEvent, run, service_fn};
 use rat_client::ops;

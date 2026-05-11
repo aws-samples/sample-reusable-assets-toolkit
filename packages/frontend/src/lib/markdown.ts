@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { marked } from 'marked';
 import { highlight } from '@/lib/highlight';
 

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import Prism from 'prismjs';
 // Load order matters: extenders after base languages.
 // jsx extends markup + javascript, tsx extends jsx + typescript.

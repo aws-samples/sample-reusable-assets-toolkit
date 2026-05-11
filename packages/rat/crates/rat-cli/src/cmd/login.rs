@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use anyhow::{bail, Result};
 use crate::auth;
 use crate::config;

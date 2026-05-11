@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { fromCognitoIdentityPool } from '@aws-sdk/credential-providers';

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 //! Stateless API operation helpers.
 //!
 //! Each function takes an authenticated `LambdaClient` plus the API function ARN

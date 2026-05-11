@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { Stack, StackProps } from 'aws-cdk-lib';
 import {
   AgentRuntimeArtifact,

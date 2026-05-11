@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use anyhow::{Context, Result};
 
 use rat_client::api_client;

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 export const SSM_KEYS = {
   VPC_ID: '/idp-code/vpc/id',
   AURORA_CLUSTER_ENDPOINT: '/idp-code/aurora/cluster-endpoint',

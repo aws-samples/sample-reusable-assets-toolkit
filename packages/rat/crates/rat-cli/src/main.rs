@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use clap::Parser;
 use rat_cli::{cmd, SearchScope};
 

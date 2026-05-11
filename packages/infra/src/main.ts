@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { AgentStack } from './stacks/agent-stack.js';
 import { ApplicationStack } from './stacks/application-stack.js';
 import { AuthStack } from './stacks/auth-stack.js';

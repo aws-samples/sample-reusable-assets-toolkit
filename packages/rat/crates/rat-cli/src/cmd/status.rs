@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use anyhow::{Context, Result};
 use aws_sdk_sqs::types::QueueAttributeName;
 

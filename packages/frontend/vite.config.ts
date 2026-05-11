@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 import solidPlugin from 'vite-plugin-solid';

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 import hashlib
 import os
 from collections.abc import Generator

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 from typing import TypedDict
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp

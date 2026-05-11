@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import {
   ArnFormat,
   Aspects,

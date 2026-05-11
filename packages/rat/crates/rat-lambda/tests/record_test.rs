@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use rat_core::summary::{self, SummaryContext};
 use rat_lambda::{build_file_record, build_snippet_records, FileMessage};
 

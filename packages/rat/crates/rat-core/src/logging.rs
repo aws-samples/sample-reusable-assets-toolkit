@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /// Lambda용 JSON tracing 초기화.
 pub fn init_lambda_tracing() {
     tracing_subscriber::fmt()

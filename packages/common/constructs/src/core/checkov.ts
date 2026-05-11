@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { IConstruct } from 'constructs';
 import { CfnResource } from 'aws-cdk-lib';
 

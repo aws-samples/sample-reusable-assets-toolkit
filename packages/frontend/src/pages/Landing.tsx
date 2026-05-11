@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import type { Component } from 'solid-js';
 import { createResource, createSignal, For, Show } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';

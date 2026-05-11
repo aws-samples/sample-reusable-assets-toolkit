@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use pgvector::Vector;
 use serde::{Deserialize, Serialize};
 use sqlx::PgExecutor;

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use tree_sitter::Node;
 
 use super::code::Language;

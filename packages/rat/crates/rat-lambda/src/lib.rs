@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 pub use rat_core::message::*;
 
 pub fn language_from_path(path: &str) -> Option<&str> {

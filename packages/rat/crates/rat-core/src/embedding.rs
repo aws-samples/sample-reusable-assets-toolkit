@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use aws_sdk_bedrockruntime::Client;
 use aws_sdk_bedrockruntime::primitives::Blob;
 use serde::{Deserialize, Serialize};

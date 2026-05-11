@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use std::fmt::Write;
 
 use aws_sdk_bedrockruntime::types::{ContentBlock, ConversationRole, Message, SystemContentBlock};

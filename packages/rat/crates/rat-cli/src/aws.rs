@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use anyhow::{Context, Result};
 use aws_config::Region;
 use aws_sdk_cognitoidentity::config::Credentials;

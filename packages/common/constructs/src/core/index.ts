@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 export * from './app.js';
 export * from './checkov.js';
 export * from './runtime-config.js';

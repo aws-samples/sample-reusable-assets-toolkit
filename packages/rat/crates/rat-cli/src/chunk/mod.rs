@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 mod code;
 mod go;
 mod java;

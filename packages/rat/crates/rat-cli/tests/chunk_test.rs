@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use std::path::Path;
 
 use rat_cli::chunk::chunk_file;

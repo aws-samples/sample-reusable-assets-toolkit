@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 //! Terminal syntax highlighting via tree-sitter-highlight.
 //!
 //! Given source text and a language key, emits ANSI-colored text.

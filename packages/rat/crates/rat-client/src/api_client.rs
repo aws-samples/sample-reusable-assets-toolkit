@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use anyhow::{bail, Context, Result};
 use aws_sdk_lambda::primitives::Blob;
 use aws_sdk_lambda::Client as LambdaClient;

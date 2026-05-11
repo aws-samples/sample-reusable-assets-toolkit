@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { App as _App, AppProps, Aspects, IAspect, Stack } from 'aws-cdk-lib';
 import { IConstruct } from 'constructs';
 

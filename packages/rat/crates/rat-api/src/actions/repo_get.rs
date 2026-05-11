@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use lambda_runtime::Error;
 use rat_core::api::{RepoGetRequest, RepoGetResponse};
 use rat_core::queries;

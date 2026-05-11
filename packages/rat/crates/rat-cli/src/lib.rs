@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 pub mod auth;
 pub mod aws;
 pub mod chunk;

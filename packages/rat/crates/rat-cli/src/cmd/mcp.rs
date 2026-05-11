@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use anyhow::Result;
 use rmcp::{
     ErrorData as McpError, ServerHandler, ServiceExt,

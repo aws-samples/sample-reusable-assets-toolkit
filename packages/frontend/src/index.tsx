@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /* @refresh reload */
 import './index.css';
 import { render } from 'solid-js/web';

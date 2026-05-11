@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Backend snippet descriptions follow a fixed 3-line format:
  *   SUMMARY: ...

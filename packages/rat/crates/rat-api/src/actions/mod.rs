@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 pub mod file_get;
 pub mod file_list;
 pub mod list;

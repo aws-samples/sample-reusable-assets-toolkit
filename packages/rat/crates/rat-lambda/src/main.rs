@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use aws_lambda_events::sqs::SqsEvent;
 use aws_sdk_bedrockruntime::Client as BedrockClient;
 use lambda_runtime::{service_fn, Error, LambdaEvent};

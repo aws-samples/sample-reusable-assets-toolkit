@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use lambda_runtime::Error;
 use pgvector::Vector;
 use rat_core::api::{RepoUpsertRequest, RepoUpsertResponse};
