@@ -42,7 +42,9 @@ export class StorageStack extends Stack {
       removalPolicy: RemovalPolicy.RETAIN,
     });
 
-    // checkov skip: Secret KMS CMK — CDK auto-generated secret, will address separately
+    // CKV_AWS_149: CMK adds fine-grained decryption control via key policy
+    // and immediate access revocation by disabling/deleting the key.
+    // AWS managed key is sufficient for now; upgrade when governance requires.
     const cfnSecret = this.cluster.node.findChild('Secret').node.defaultChild as secretsmanager.CfnSecret;
     cfnSecret.addMetadata('checkov', {
       skip: [{ id: 'CKV_AWS_149', comment: 'Aurora auto-generated secret, KMS CMK encryption to be addressed later' }],

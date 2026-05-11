@@ -191,10 +191,13 @@ export class McpStack extends Stack {
         c.cfnResourceType === 'AWS::Logs::LogGroup' &&
         c.node.path.includes('AuthProxy'),
     );
+    // CKV_AWS_149: CMK adds fine-grained decryption control via key policy
+    // and immediate access revocation by disabling/deleting the key.
+    // AWS managed key is sufficient for now; upgrade when governance requires.
     suppressRules(
       Stack.of(this),
       ['CKV_AWS_149'],
-      'AuthProxy Cognito client secret, KMS CMK encryption to be addressed later',
+      'AuthProxy Cognito client secret: AWS managed key sufficient; CMK when governance requires',
       (c) =>
         CfnResource.isCfnResource(c) &&
         c.cfnResourceType === 'AWS::SecretsManager::Secret' &&
