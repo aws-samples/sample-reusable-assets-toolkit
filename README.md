@@ -115,26 +115,6 @@ The `rat` CLI is built from `packages/rat`. The release binary lands at `package
 cargo build --release --manifest-path packages/rat/Cargo.toml
 ```
 
-Pre-built binaries are also available:
-
-| Platform | Download |
-|----------|----------|
-| macOS (Apple Silicon) | [GitLab Package Registry](https://gitlab.aws.dev/kr-prototyping/idp-code/-/packages/44301) |
-
-After downloading, rename the binary, make it executable, and remove the quarantine attribute (required for binaries downloaded via a web browser):
-
-```sh
-mv rat-aarch64-apple-darwin rat
-chmod +x rat
-xattr -d com.apple.quarantine rat
-```
-
-Optionally, copy it to a directory on your `PATH` so you can run `rat` from anywhere:
-
-```sh
-sudo cp rat /usr/local/bin/
-```
-
 ### Infrastructure deployment
 
 Deploy the AWS CDK stacks before using the CLI. The stacks must be deployed in dependency order, but `--all` handles this automatically.
@@ -161,15 +141,7 @@ After deployment, note the Cognito resource values for `rat configure`. The rema
 rat configure
 ```
 
-`rat configure` prompts for the following values. Use these for the deployed environment (authenticated via Midway → Cognito). Access is restricted to members of the `aws-apj-pace` POSIX group.
-
-| Field | Value |
-|-------|-------|
-| AWS Region | `ap-northeast-2` |
-| Cognito Domain | `idp-code-975050239358.auth.ap-northeast-2.amazoncognito.com` |
-| Cognito App Client ID | `752a7ag3fiuidq2nip3sb8i23o` |
-| Cognito Identity Pool ID | `ap-northeast-2:8d208bf4-0c5f-463a-85d5-7b3b412639cb` |
-| Cognito User Pool ID | `ap-northeast-2_HxrCJOnfN` |
+`rat configure` prompts for AWS Region, Cognito Domain, App Client ID, Identity Pool ID, and User Pool ID. Use the values from your CDK deployment outputs.
 
 ![rat configure](./docs/configure.gif)
 
@@ -294,18 +266,18 @@ Run `rat login` to obtain a Cognito token **before** invoking MCP tools. Access 
 
 A hosted MCP server runs on AWS AgentCore Gateway, fronted by a Dynamic Client Registration (DCR) OAuth proxy backed by Cognito. Use this when you don't want to install the `rat` binary locally.
 
-**Endpoint**: `https://qjxtgksxb1.execute-api.ap-northeast-2.amazonaws.com/mcp`
+**Endpoint**: `<DCR_PROXY_API_GATEWAY_ENDPOINT>/mcp` (replace with the API Gateway endpoint output by the DCR proxy stack)
 
-Each client must use a fixed callback port — Cognito validates `redirect_uri` by exact string match. The proxy pre-registers the callback URLs below; if you want to change them, update `packages/infra/src/stacks/mcp-stack.ts`.
+Each client must use a fixed callback port — Cognito validates `redirect_uri` by exact string match. The port/URL used by each client below must match a callback URL registered on the Cognito App Client (configured in `packages/infra/src/stacks/mcp-stack.ts`); update both sides together if you want to change them.
 
 ### Claude Code
 
 ```sh
-claude mcp add --transport http --callback-port 33418 rat \
-  https://qjxtgksxb1.execute-api.ap-northeast-2.amazonaws.com/mcp
+claude mcp add --transport http --callback-port <PORT> rat \
+  <DCR_PROXY_API_GATEWAY_ENDPOINT>/mcp
 ```
 
-`--callback-port 33418` is required — Claude Code uses random ports by default and OAuth will fail with `redirect_mismatch` otherwise. The pre-registered URL is `http://localhost:33418/callback`.
+`--callback-port <PORT>` is required — Claude Code uses random ports by default and OAuth will fail with `redirect_mismatch` otherwise. `<PORT>` must match the Cognito App Client callback URL `http://localhost:<PORT>/callback`.
 
 ### Kiro CLI
 
@@ -316,22 +288,22 @@ Add to `~/.kiro/settings/mcp.json` (user) or `.kiro/settings/mcp.json` (workspac
   "mcpServers": {
     "rat": {
       "type": "http",
-      "url": "https://qjxtgksxb1.execute-api.ap-northeast-2.amazonaws.com/mcp",
+      "url": "<DCR_PROXY_API_GATEWAY_ENDPOINT>/mcp",
       "oauth": {
-        "redirectUri": "http://127.0.0.1:49153"
+        "redirectUri": "http://127.0.0.1:<PORT>"
       }
     }
   }
 }
 ```
 
-`oauth.redirectUri` is required — Kiro CLI assigns a random ephemeral port otherwise. The pre-registered URL is `http://127.0.0.1:49153` (no trailing slash, no path).
+`oauth.redirectUri` is required — Kiro CLI assigns a random ephemeral port otherwise. `<PORT>` must match the Cognito App Client callback URL `http://127.0.0.1:<PORT>` (no trailing slash, no path).
 
 ### Claude Desktop / claude.ai
 
 Add as a Custom Connector:
 
-- **Server URL**: `https://qjxtgksxb1.execute-api.ap-northeast-2.amazonaws.com/mcp`
+- **Server URL**: `<DCR_PROXY_API_GATEWAY_ENDPOINT>/mcp`
 
 No port configuration needed — Anthropic uses the hosted callback `https://claude.ai/api/mcp/auth_callback`, which is pre-registered.
 
